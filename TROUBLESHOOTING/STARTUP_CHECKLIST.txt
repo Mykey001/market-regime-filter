@@ -1,0 +1,145 @@
+╔══════════════════════════════════════════════════════════════════╗
+║           MARKET REGIME SYSTEM - STARTUP CHECKLIST               ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Follow this EXACT order to avoid Error 4014:
+
+
+STEP 1: PREPARE
+═══════════════════════════════════════════════════════════════════
+[ ] MT5 is running
+[ ] EA is NOT attached to any chart yet
+[ ] Python GUI is NOT running yet
+
+
+STEP 2: START PYTHON GUI
+═══════════════════════════════════════════════════════════════════
+[ ] Open Command Prompt
+[ ] Navigate: cd "C:\Users\MYCkey98\Downloads\REGIME MOD"
+[ ] Run: python regime_trading_gui.py
+[ ] GUI window opens successfully
+
+
+STEP 3: START SERVER
+═══════════════════════════════════════════════════════════════════
+[ ] In GUI, click "Start Server" button
+[ ] Button text changes to "Stop Server"
+[ ] Status bar shows: "Listening on 127.0.0.1:9090"
+[ ] Connection indicator is RED ● (waiting for EA)
+
+    ⚠️  STOP HERE! Wait for this message before continuing!
+
+
+STEP 4: VERIFY SERVER IS READY
+═══════════════════════════════════════════════════════════════════
+Check GUI shows:
+[ ] Model status: "Model: Loaded ✓" (green)
+[ ] Connection status: RED ● (waiting)
+[ ] Status bar: "Listening on 127.0.0.1:9090"
+
+    ✓ If all green, proceed to Step 5
+    ✗ If any red, don't continue - troubleshoot first
+
+
+STEP 5: ATTACH EA TO MT5
+═══════════════════════════════════════════════════════════════════
+[ ] In MT5, open M5 chart (BTCUSD or any pair)
+[ ] Find MT5_RegimeFilter in Navigator → Expert Advisors
+[ ] Drag EA onto the M5 chart
+[ ] EA settings dialog appears
+
+Configure EA:
+[ ] PythonHost = 127.0.0.1
+[ ] PythonPort = 9090
+[ ] EnableFilter = true
+[ ] Check ✓ "Allow live trading"
+[ ] Check ✓ "Allow DLL imports"
+[ ] Click "OK"
+
+
+STEP 6: VERIFY CONNECTION
+═══════════════════════════════════════════════════════════════════
+
+In Python GUI (should happen within 2-3 seconds):
+[ ] Connection indicator turns GREEN ●
+[ ] Status bar shows: "EA connected from 127.0.0.1:xxxxx"
+[ ] Terminal dropdown shows: "MetaTrader 5 - ..."
+[ ] No error messages
+
+In MT5:
+[ ] Chart shows regime info in corner
+[ ] Experts tab shows: "Connected to Python GUI..."
+[ ] No error messages (no "4014")
+
+
+STEP 7: WAIT FOR WARMUP
+═══════════════════════════════════════════════════════════════════
+[ ] GUI shows: "Data Buffer: X bars"
+[ ] Progress bar starts filling
+[ ] Wait until: "Data Buffer: 626 bars (Ready)"
+[ ] This takes ~52 hours (leave running)
+
+
+═══════════════════════════════════════════════════════════════════
+                    ✓ CONNECTION SUCCESSFUL!
+═══════════════════════════════════════════════════════════════════
+
+
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+❌ ERROR: "Failed to connect socket: 4014"
+
+CAUSE: Started EA before GUI server was ready
+
+SOLUTION:
+1. Remove EA from chart
+2. Go back to STEP 2
+3. Follow exact order
+4. Don't skip "Start Server" button!
+
+
+❌ ERROR: GUI won't start
+
+SOLUTION:
+cd "C:\Users\MYCkey98\Downloads\REGIME MOD"
+python test_installation.py
+
+
+❌ ERROR: Port already in use
+
+SOLUTION:
+1. Change port in GUI to 9091
+2. Change PythonPort in EA to 9091
+3. Restart from STEP 2
+
+
+❌ ERROR: Firewall blocking
+
+SOLUTION:
+Run as Administrator:
+netsh advfirewall firewall add rule name="Python" dir=in action=allow program="C:\Python\python.exe"
+
+
+═══════════════════════════════════════════════════════════════════
+                      DAILY OPERATION
+═══════════════════════════════════════════════════════════════════
+
+Every time you start:
+1. Start GUI
+2. Click "Start Server"  ← DON'T FORGET!
+3. Wait for "Listening..."
+4. Start MT5 (EA will auto-connect if already attached)
+
+Every time you stop:
+1. Close MT5 (or remove EA)
+2. Stop GUI server (click "Stop Server")
+3. Close GUI
+
+
+═══════════════════════════════════════════════════════════════════
+
+REMEMBER THE GOLDEN RULE:
+    GUI FIRST → Start Server → THEN MT5 EA
+
+═══════════════════════════════════════════════════════════════════

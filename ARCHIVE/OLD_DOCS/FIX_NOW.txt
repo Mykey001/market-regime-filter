@@ -1,0 +1,62 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║              🔥 YOUR GUI IS RUNNING OLD CODE 🔥                      ║
+║                                                                       ║
+║  The fix is in the file, but the running GUI doesn't know about it! ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ 🎯 QUICK FIX (30 seconds):                                           │
+└───────────────────────────────────────────────────────────────────────┘
+
+  1. CLOSE Python GUI (click X button)
+  
+  2. RUN:  CORE_SYSTEM\start_gui.bat
+  
+  3. CLICK: "Start Server" button
+  
+  4. In MT5: Remove EA from chart and reattach
+  
+  5. WAIT: 20 seconds
+  
+  6. CHECK: Chart should show "ML Regime: 4" (not WARMING UP)
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ 📊 WHAT YOU'LL SEE:                                                   │
+└───────────────────────────────────────────────────────────────────────┘
+
+  Console will print:
+  
+    [WARMUP FIX] Sending regime to EA: Regime 4, Confidence 100.0%, Allowed: True
+    
+  This means the fix is working!
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ ⚠️ WHY RESTART IS NEEDED:                                            │
+└───────────────────────────────────────────────────────────────────────┘
+
+  Python loads code when it STARTS
+  
+  Code changes = File updated ✅
+  Running program = Still using old code ❌
+  
+  Solution: RESTART to load new code ✅
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ ✅ EXPECTED RESULT:                                                   │
+└───────────────────────────────────────────────────────────────────────┘
+
+  BEFORE RESTART:
+    GUI: Regime 4 ✅
+    MT5: WARMING UP ❌
+    
+  AFTER RESTART:
+    GUI: Regime 4 ✅
+    MT5: Regime 4 ✅  ← FIXED!
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║              DO IT NOW → Close GUI → Restart → Done! ✅             ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
