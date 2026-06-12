@@ -14,6 +14,7 @@ double g_rf_regimeConfidence = 0.0;
 bool g_rf_tradeAllowed = true;
 bool g_rf_connected = false;
 string g_rf_terminalName = "";
+string g_rf_eaName = "";         // Unique EA identifier for per-EA filtering
 string g_rf_receiveBuffer = "";
 datetime g_rf_lastBarTime = 0;
 
@@ -24,14 +25,28 @@ bool g_rf_EnableFilter = true;             // Enable regime filter
 
 //+------------------------------------------------------------------+
 //| Initialize Regime Filter - Call this from your EA's OnInit()    |
+//|                                                                  |
+//| Parameters:                                                      |
+//|   host   - Python GUI host (default "127.0.0.1")                |
+//|   port   - Python GUI port (default 9090)                       |
+//|   enable - Enable/disable filter (default true)                 |
+//|   eaName - Unique EA name for per-EA filtering.                 |
+//|            If empty, auto-generated from Symbol + Account.      |
 //+------------------------------------------------------------------+
-bool InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable = true)
+bool RF_InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable = true, string eaName = "")
 {
    g_rf_PythonHost = host;
    g_rf_PythonPort = port;
    g_rf_EnableFilter = enable;
    
+   // Set EA name - use provided name or auto-generate
+   if(eaName != "")
+      g_rf_eaName = eaName;
+   else
+      g_rf_eaName = _Symbol + "_" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
+   
    Print("=== Regime Filter Initializing ===");
+   Print("  EA Name: ", g_rf_eaName);
    
    // Get terminal name for identification
    g_rf_terminalName = TerminalInfoString(TERMINAL_NAME) + " - " + 
@@ -64,7 +79,7 @@ bool InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable = 
 //+------------------------------------------------------------------+
 //| Cleanup Regime Filter - Call this from your EA's OnDeinit()     |
 //+------------------------------------------------------------------+
-void DeinitRegimeFilter()
+void RF_DeinitRegimeFilter()
 {
    Print("Regime Filter: Shutting down...");
    
@@ -80,7 +95,7 @@ void DeinitRegimeFilter()
 //+------------------------------------------------------------------+
 //| Update Regime Filter - Call this from your EA's OnTick()        |
 //+------------------------------------------------------------------+
-void UpdateRegimeFilter()
+void RF_UpdateRegimeFilter()
 {
    // Check connection
    if(!g_rf_connected || g_rf_socketHandle == INVALID_HANDLE)
@@ -150,6 +165,7 @@ void RF_SendHandshake()
    string json = "{";
    json += "\"type\":\"handshake\",";
    json += "\"terminal\":\"" + g_rf_terminalName + "\",";
+   json += "\"ea_name\":\"" + g_rf_eaName + "\",";
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
    json += "}\n";
@@ -247,7 +263,7 @@ void RF_SendCurrentBar()
 //+------------------------------------------------------------------+
 //| Check if trade is allowed - MAIN FUNCTION FOR YOUR EA           |
 //+------------------------------------------------------------------+
-bool IsTradeAllowed(string action)
+bool RF_IsTradeAllowed(string action)
 {
    if(!g_rf_EnableFilter || !g_rf_connected)
       return true;  // Allow if filter disabled or not connected
@@ -258,12 +274,14 @@ bool IsTradeAllowed(string action)
    // Reset the trade allowed flag before sending request
    g_rf_tradeAllowed = false;
    
-   // Send trade request
+   // Send trade request with ea_name for per-EA filtering
    string json = "{";
    json += "\"type\":\"trade_request\",";
    json += "\"terminal\":\"" + g_rf_terminalName + "\",";
+   json += "\"ea_name\":\"" + g_rf_eaName + "\",";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"action\":\"" + action + "\"";
+   json += "\"action\":\"" + action + "\",";
+   json += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
    json += "}\n";
    
    Print("[DEBUG] Sending trade request for action: ", action);
@@ -420,23 +438,59 @@ void RF_ParseResponse(string json)
 //+------------------------------------------------------------------+
 //| Get current regime info - HELPER FUNCTIONS FOR YOUR EA          |
 //+------------------------------------------------------------------+
-int GetCurrentRegime()
+int RF_GetCurrentRegime()
 {
    return g_rf_currentRegime;
 }
 
-double GetRegimeConfidence()
+double RF_GetRegimeConfidence()
 {
    return g_rf_regimeConfidence;
 }
 
-bool IsRegimeFilterConnected()
+bool RF_IsRegimeFilterConnected()
 {
    return g_rf_connected;
 }
 
-bool IsTradeAllowedByRegime()
+bool RF_IsTradeAllowedByRegime()
 {
    return g_rf_tradeAllowed;
 }
+
+#ifndef RF_NO_COMPATIBILITY
+// Backwards compatibility wrappers
+bool InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable = true, string eaName = "")
+{
+   return RF_InitRegimeFilter(host, port, enable, eaName);
+}
+void DeinitRegimeFilter()
+{
+   RF_DeinitRegimeFilter();
+}
+void UpdateRegimeFilter()
+{
+   RF_UpdateRegimeFilter();
+}
+bool IsTradeAllowed(string action)
+{
+   return RF_IsTradeAllowed(action);
+}
+int GetCurrentRegime()
+{
+   return RF_GetCurrentRegime();
+}
+double GetRegimeConfidence()
+{
+   return RF_GetRegimeConfidence();
+}
+bool IsRegimeFilterConnected()
+{
+   return RF_IsRegimeFilterConnected();
+}
+bool IsTradeAllowedByRegime()
+{
+   return RF_IsTradeAllowedByRegime();
+}
+#endif
 //+------------------------------------------------------------------+

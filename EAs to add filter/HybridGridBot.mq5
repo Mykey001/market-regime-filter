@@ -146,7 +146,7 @@ int OnInit()
     if(EnableRegimeFilter)
     {
         Print("=== Initializing ML Regime Filter ===");
-        if(InitRegimeFilter(RegimeFilterHost, RegimeFilterPort, EnableRegimeFilter))
+        if(InitRegimeFilter(RegimeFilterHost, RegimeFilterPort, EnableRegimeFilter, "HybridGridBot"))
         {
             Print("ML Regime Filter: Successfully connected to Python GUI");
         }

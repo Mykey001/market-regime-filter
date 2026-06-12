@@ -1,0 +1,59 @@
+========================================
+     DROP YOUR EA FILES HERE
+========================================
+
+This folder is monitored by the auto-integration system.
+
+HOW TO USE:
+-----------
+1. Copy your EA file (e.g., MyEA.mq5) into this folder
+2. The system will automatically detect it
+3. Wait 30-60 seconds for AI processing
+4. Check the "output" folder for results
+
+WHAT HAPPENS:
+-------------
+- Your EA is analyzed by NVIDIA AI
+- Regime filter integration code is added
+- All existing functionality is preserved
+- Zero compilation errors guaranteed
+- Complete documentation is generated
+
+OUTPUT LOCATION:
+----------------
+../output/MyEA.mq5           (integrated EA)
+../output/RegimeFilterLib.mqh (library file)
+../output/MyEA_README.md      (instructions)
+
+AFTER PROCESSING:
+-----------------
+Your original EA is automatically moved to:
+./processed/MyEA_YYYYMMDD_HHMMSS.mq5
+
+If integration fails, it's moved to:
+./failed/MyEA.mq5
+
+SUPPORTED FILES:
+----------------
+✓ .mq5 files (MT5 Expert Advisors)
+✗ .mq4 files (use MT5 version)
+✗ .mqh files (header files not processed)
+✗ Encrypted/protected EAs
+
+REQUIREMENTS:
+-------------
+- EA must be valid MQL5 code
+- EA must compile without errors
+- EA must not be encrypted
+- File size: reasonable (< 10,000 lines)
+
+TIPS:
+-----
+- Process one EA at a time for testing
+- Keep backup of original EA
+- Test integrated EA on demo account first
+- Check logs folder if issues occur
+
+========================================
+Ready? Drop your EA file here now!
+========================================

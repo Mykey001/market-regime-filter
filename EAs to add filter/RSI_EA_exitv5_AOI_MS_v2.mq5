@@ -171,7 +171,7 @@ int OnInit()
 {
    // REGIME FILTER: Initialize regime filter first
    // Send more bars to account for warmup period (626 bars needed after NaN drop)
-   InitRegimeFilter("127.0.0.1", 9090, true);
+   InitRegimeFilter("127.0.0.1", 9090, true, "RSI_EA");
    
    // Create RSI indicator handle
    rsi_handle = iRSI(_Symbol, RSI_Timeframe, RSI_Period, PRICE_CLOSE);

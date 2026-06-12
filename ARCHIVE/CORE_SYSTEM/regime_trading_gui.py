@@ -19,6 +19,7 @@ import queue
 import socket
 import json
 import time
+import winreg
 from datetime import datetime
 from pathlib import Path
 
@@ -29,7 +30,8 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QGroupBox,
     QComboBox, QSpinBox, QCheckBox, QTextEdit, QTabWidget,
-    QGridLayout, QLineEdit, QMessageBox, QStatusBar, QProgressBar
+    QGridLayout, QLineEdit, QMessageBox, QStatusBar, QProgressBar,
+    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QFont, QColor
@@ -76,6 +78,126 @@ DEFAULT_HOST = "127.0.0.1"
 
 
 # ============================================================
+# TERMINAL SCANNER
+# ============================================================
+
+class TerminalScanner:
+    """Scans Windows registry for installed MT4/MT5 terminals."""
+    
+    @staticmethod
+    def scan_windows_terminals():
+        """Scan Windows registry for MetaTrader installations.
+        
+        Returns:
+            List of dicts with keys: name, path, version, data_path
+        """
+        terminals = []
+        
+        # Common registry paths for MetaTrader
+        registry_paths = [
+            (winreg.HKEY_CURRENT_USER, r"Software\MetaQuotes\Terminal"),
+            (winreg.HKEY_CURRENT_USER, r"Software\MetaQuotes\MetaTrader 4"),
+            (winreg.HKEY_CURRENT_USER, r"Software\MetaQuotes\MetaTrader 5"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\MetaQuotes\Terminal"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\MetaQuotes\MetaTrader 4"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\MetaQuotes\MetaTrader 5"),
+        ]
+        
+        for hkey, path in registry_paths:
+            try:
+                key = winreg.OpenKey(hkey, path)
+                i = 0
+                while True:
+                    try:
+                        subkey_name = winreg.EnumKey(key, i)
+                        subkey = winreg.OpenKey(key, subkey_name)
+                        
+                        try:
+                            # Try to get installation path
+                            install_path, _ = winreg.QueryValueEx(subkey, "InstallPath")
+                            data_path, _ = winreg.QueryValueEx(subkey, "DataPath")
+                            
+                            # Determine version from path
+                            version = "MT5" if "MetaTrader 5" in install_path or "terminal64.exe" in install_path else "MT4"
+                            
+                            # Get broker name from data path if available
+                            broker_name = Path(data_path).parent.name if data_path else "Unknown"
+                            
+                            terminal_info = {
+                                "name": f"{broker_name} ({version})",
+                                "path": install_path,
+                                "data_path": data_path,
+                                "version": version,
+                                "registry_key": subkey_name
+                            }
+                            
+                            # Avoid duplicates
+                            if not any(t["path"] == install_path for t in terminals):
+                                terminals.append(terminal_info)
+                        except WindowsError:
+                            pass
+                        
+                        winreg.CloseKey(subkey)
+                        i += 1
+                    except WindowsError:
+                        break
+                winreg.CloseKey(key)
+            except WindowsError:
+                pass
+        
+        # Also scan common installation directories
+        common_paths = [
+            Path(r"C:\Program Files\MetaTrader 4"),
+            Path(r"C:\Program Files\MetaTrader 5"),
+            Path(r"C:\Program Files (x86)\MetaTrader 4"),
+            Path(r"C:\Program Files (x86)\MetaTrader 5"),
+            Path.home() / "AppData" / "Roaming" / "MetaQuotes",
+        ]
+        
+        for base_path in common_paths:
+            if base_path.exists():
+                # Look for terminal executables
+                for exe_name in ["terminal.exe", "terminal64.exe", "metatrader.exe"]:
+                    exe_path = base_path / exe_name
+                    if exe_path.exists():
+                        version = "MT5" if "64" in exe_name or base_path.name.endswith("5") else "MT4"
+                        terminal_info = {
+                            "name": f"{base_path.name} ({version})",
+                            "path": str(base_path),
+                            "data_path": str(base_path),
+                            "version": version,
+                            "registry_key": None
+                        }
+                        if not any(t["path"] == str(base_path) for t in terminals):
+                            terminals.append(terminal_info)
+        
+        return terminals
+    
+    @staticmethod
+    def get_terminal_data_folders(terminal_path):
+        """Get list of data folders for a terminal installation.
+        
+        Returns:
+            List of account data folders
+        """
+        folders = []
+        
+        # MT5 data structure: Terminal/[hash]/
+        # MT4 data structure: Terminal/[hash]/
+        
+        data_path = Path(terminal_path)
+        if not data_path.exists():
+            return folders
+        
+        # Look for MQL4/MQL5 folders which indicate account data
+        for item in data_path.rglob("*"):
+            if item.is_dir() and (item.name == "MQL4" or item.name == "MQL5"):
+                folders.append(str(item.parent))
+        
+        return folders
+
+
+# ============================================================
 # MT4/MT5 SOCKET BRIDGE
 # ============================================================
 
@@ -85,6 +207,7 @@ class MTBridge(QObject):
     data_received = pyqtSignal(dict)
     connection_status = pyqtSignal(bool, str)
     terminal_connected = pyqtSignal(str, str)  # terminal_name, symbol
+    ea_registered = pyqtSignal(str, dict)  # ea_name, ea_config
     
     def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT):
         super().__init__()
@@ -93,6 +216,7 @@ class MTBridge(QObject):
         self.server_socket = None
         self.client_sockets = {}  # {terminal_id: socket}
         self.terminal_info = {}   # {terminal_id: {name, symbol, account}}
+        self.ea_configs = {}      # {ea_name: {terminal_id, symbol, filter_config}}
         self.is_running = False
         self.thread = None
         self.selected_terminal = None
@@ -185,12 +309,26 @@ class MTBridge(QObject):
                                     self.terminal_info[terminal_id] = {
                                         'name': msg.get('terminal', 'Unknown'),
                                         'symbol': msg.get('symbol', ''),
-                                        'account': msg.get('account', '')
+                                        'account': msg.get('account', ''),
+                                        'ea_name': msg.get('ea_name', 'UnknownEA')
                                     }
                                     self.terminal_connected.emit(
                                         self.terminal_info[terminal_id]['name'],
                                         self.terminal_info[terminal_id]['symbol']
                                     )
+                                    
+                                    # Register EA configuration
+                                    ea_name = msg.get('ea_name', 'UnknownEA')
+                                    ea_config = {
+                                        'terminal_id': terminal_id,
+                                        'symbol': msg.get('symbol', ''),
+                                        'timeframe': msg.get('timeframe', 'M5'),
+                                        'account': msg.get('account', ''),
+                                        'terminal': msg.get('terminal', 'Unknown'),
+                                        'filter_config': self._parse_filter_config(msg.get('filter_config', {}))
+                                    }
+                                    self.ea_configs[ea_name] = ea_config
+                                    self.ea_registered.emit(ea_name, ea_config)
                                 
                                 self.data_received.emit(msg)
                             except json.JSONDecodeError as e:

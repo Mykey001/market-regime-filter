@@ -1,0 +1,73 @@
+[2026-06-11 09:21:32] ================================================================================
+[2026-06-11 09:21:32] Starting LOCAL integration for: V15
+[2026-06-11 09:21:32] Timestamp: 2026-06-11 09:21:32.158682
+[2026-06-11 09:21:32] ================================================================================
+[2026-06-11 09:21:32] Reading EA file: V15.mq5
+[2026-06-11 09:21:32]   Size: 200399 characters
+[2026-06-11 09:21:32] Loading RegimeFilterLib.mqh template...
+[2026-06-11 09:21:32]   Size: 14339 characters
+[2026-06-11 09:21:32] Starting LOCAL integration (no AI needed)...
+[2026-06-11 09:21:32] Starting LOCAL rule-based integration...
+[2026-06-11 09:21:32] Step 0: Checking for conflicts and renaming if needed...
+[2026-06-11 09:21:32]   Found conflict: RegimeState GetCurrentRegime() - renaming to EA_GetCurrentRegime()
+[2026-06-11 09:21:32] SUCCESS: Renamed RegimeState GetCurrentRegime() to EA_GetCurrentRegime()
+[2026-06-11 09:21:32]   Resolved 1 naming conflict(s)
+[2026-06-11 09:21:32] Step 1: Adding library include...
+[2026-06-11 09:21:32] SUCCESS: Library include added after includes
+[2026-06-11 09:21:32] Step 2: Adding input parameters at global scope...
+[2026-06-11 09:21:32] SUCCESS: Input parameters added at global scope
+[2026-06-11 09:21:32] Step 3: Adding OnInit integration...
+[2026-06-11 09:21:32] SUCCESS: OnInit integration added
+[2026-06-11 09:21:32] Step 4: Adding OnTick integration...
+[2026-06-11 09:21:32] SUCCESS: OnTick integration added
+[2026-06-11 09:21:32] Step 5: Adding trade filtering...
+[2026-06-11 09:21:32]   No standard trade patterns detected
+[2026-06-11 09:21:32]   Trade filter not added automatically
+[2026-06-11 09:21:32]   (Manual instructions will be provided in README)
+[2026-06-11 09:21:32] Step 6: Adding OnDeinit integration...
+[2026-06-11 09:21:32] SUCCESS: OnDeinit integration added
+[2026-06-11 09:21:32] Step 7: Updating version number...
+[2026-06-11 09:21:32] SUCCESS: Version updated: 15.10 → 15.11
+[2026-06-11 09:21:32] ================================================================================
+[2026-06-11 09:21:32] SUCCESS: LOCAL integration completed! 8 changes made:
+[2026-06-11 09:21:32]   1. Renamed RegimeState GetCurrentRegime() to EA_GetCurrentRegime() to avoid conflict
+[2026-06-11 09:21:32]   2. Added #include RegimeFilterLib.mqh after includes
+[2026-06-11 09:21:32]   3. Added input parameters at global scope (before first function)
+[2026-06-11 09:21:32]   4. Added InitRegimeFilter() in OnInit()
+[2026-06-11 09:21:32]   5. Added UpdateRegimeFilter() in OnTick()
+[2026-06-11 09:21:32]   6. Trade filter: Not auto-added (custom patterns)
+[2026-06-11 09:21:32]   7. Added DeinitRegimeFilter() in OnDeinit()
+[2026-06-11 09:21:32]   8. Updated version from 15.10 to 15.11
+[2026-06-11 09:21:32] ================================================================================
+[2026-06-11 09:21:32] 
+[2026-06-11 09:21:32] IMPORTANT: Function names were renamed to avoid conflicts:
+[2026-06-11 09:21:32]   - RegimeState GetCurrentRegime → EA_GetCurrentRegime
+[2026-06-11 09:21:32] Your EA logic is preserved, just with renamed functions.
+[2026-06-11 09:21:32] 
+[2026-06-11 09:21:32] Verifying integration completeness...
+[2026-06-11 09:21:32]   ✓ PASS: Library include
+[2026-06-11 09:21:32]   ✓ PASS: Input parameters
+[2026-06-11 09:21:32]   ✓ PASS: OnInit integration
+[2026-06-11 09:21:32]   ✓ PASS: OnTick integration
+[2026-06-11 09:21:32]   ✓ PASS: OnDeinit integration
+[2026-06-11 09:21:32]   ⚠ SKIP: Trade filter check
+[2026-06-11 09:21:32] 
+[2026-06-11 09:21:32]   NOTE: Trade filter check not auto-added
+[2026-06-11 09:21:32]   Your EA uses custom trade functions
+[2026-06-11 09:21:32]   Add manually in your trade opening function:
+[2026-06-11 09:21:32]   
+[2026-06-11 09:21:32]   if(EnableRegimeFilter && IsRegimeFilterConnected())
+[2026-06-11 09:21:32]   {
+[2026-06-11 09:21:32]       if(!IsTradeAllowed("buy"))  // or "sell"
+[2026-06-11 09:21:32]       {
+[2026-06-11 09:21:32]           Print("Trade BLOCKED by Regime Filter");
+[2026-06-11 09:21:32]           return false;
+[2026-06-11 09:21:32]       }
+[2026-06-11 09:21:32]   }
+[2026-06-11 09:21:32] 
+[2026-06-11 09:21:32] SUCCESS: Core integration complete! Ready to use.
+[2026-06-11 09:21:32] (Add trade filter manually for full functionality)
+[2026-06-11 09:21:32] Saving integrated EA to: V15.mq5
+[2026-06-11 09:21:32] SUCCESS: Integrated EA saved successfully!
+[2026-06-11 09:21:32] README created: V15_README.md
+[2026-06-11 09:21:32] Original file archived to: V15_20260611_092132.mq5

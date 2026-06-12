@@ -1,0 +1,63 @@
+[2026-06-10 18:57:37] ================================================================================
+[2026-06-10 18:57:37] Starting LOCAL integration for: V15
+[2026-06-10 18:57:37] Timestamp: 2026-06-10 18:57:37.026202
+[2026-06-10 18:57:37] ================================================================================
+[2026-06-10 18:57:37] Reading EA file: V15.mq5
+[2026-06-10 18:57:37]   Size: 200399 characters
+[2026-06-10 18:57:37] Loading RegimeFilterLib.mqh template...
+[2026-06-10 18:57:37]   Size: 14339 characters
+[2026-06-10 18:57:37] Starting LOCAL integration (no AI needed)...
+[2026-06-10 18:57:37] Starting LOCAL rule-based integration...
+[2026-06-10 18:57:37] Step 0: Checking for conflicts and renaming if needed...
+[2026-06-10 18:57:37]   No conflicts found
+[2026-06-10 18:57:37] Step 1: Adding library include...
+[2026-06-10 18:57:37] SUCCESS: Library include added after includes
+[2026-06-10 18:57:37] Step 2: Adding input parameters at global scope...
+[2026-06-10 18:57:37] SUCCESS: Input parameters added at global scope
+[2026-06-10 18:57:37] Step 3: Adding OnInit integration...
+[2026-06-10 18:57:37] SUCCESS: OnInit integration added
+[2026-06-10 18:57:37] Step 4: Adding OnTick integration...
+[2026-06-10 18:57:37] SUCCESS: OnTick integration added
+[2026-06-10 18:57:37] Step 5: Adding trade filtering (if standard patterns found)...
+[2026-06-10 18:57:37]   Skipping automatic trade filter insertion
+[2026-06-10 18:57:37]   (Will provide manual instructions in README)
+[2026-06-10 18:57:37] Step 6: Adding OnDeinit integration...
+[2026-06-10 18:57:37] SUCCESS: OnDeinit integration added
+[2026-06-10 18:57:37] Step 7: Updating version number...
+[2026-06-10 18:57:37] SUCCESS: Version updated: 15.10 → 15.11
+[2026-06-10 18:57:37] ================================================================================
+[2026-06-10 18:57:37] SUCCESS: LOCAL integration completed! 6 changes made:
+[2026-06-10 18:57:37]   1. Added #include RegimeFilterLib.mqh after includes
+[2026-06-10 18:57:37]   2. Added input parameters at global scope (before first function)
+[2026-06-10 18:57:37]   3. Added InitRegimeFilter() in OnInit()
+[2026-06-10 18:57:37]   4. Added UpdateRegimeFilter() in OnTick()
+[2026-06-10 18:57:37]   5. Added DeinitRegimeFilter() in OnDeinit()
+[2026-06-10 18:57:37]   6. Updated version from 15.10 to 15.11
+[2026-06-10 18:57:37] ================================================================================
+[2026-06-10 18:57:37] Verifying integration completeness...
+[2026-06-10 18:57:37]   ✓ PASS: Library include
+[2026-06-10 18:57:37]   ✓ PASS: Input parameters
+[2026-06-10 18:57:37]   ✓ PASS: OnInit integration
+[2026-06-10 18:57:37]   ✓ PASS: OnTick integration
+[2026-06-10 18:57:37]   ✓ PASS: OnDeinit integration
+[2026-06-10 18:57:37]   ⚠ SKIP: Trade filter check
+[2026-06-10 18:57:37] 
+[2026-06-10 18:57:37]   NOTE: Trade filter check not auto-added
+[2026-06-10 18:57:37]   Your EA uses custom trade functions
+[2026-06-10 18:57:37]   Add manually in your trade opening function:
+[2026-06-10 18:57:37]   
+[2026-06-10 18:57:37]   if(EnableRegimeFilter && IsRegimeFilterConnected())
+[2026-06-10 18:57:37]   {
+[2026-06-10 18:57:37]       if(!IsTradeAllowed("buy"))  // or "sell"
+[2026-06-10 18:57:37]       {
+[2026-06-10 18:57:37]           Print("Trade BLOCKED by Regime Filter");
+[2026-06-10 18:57:37]           return false;
+[2026-06-10 18:57:37]       }
+[2026-06-10 18:57:37]   }
+[2026-06-10 18:57:37] 
+[2026-06-10 18:57:37] SUCCESS: Core integration complete! Ready to use.
+[2026-06-10 18:57:37] (Add trade filter manually for full functionality)
+[2026-06-10 18:57:37] Saving integrated EA to: V15.mq5
+[2026-06-10 18:57:37] SUCCESS: Integrated EA saved successfully!
+[2026-06-10 18:57:37] README created: V15_README.md
+[2026-06-10 18:57:37] Original file archived to: V15_20260610_185737.mq5
