@@ -4,6 +4,166 @@ All notable changes, improvements, and reorganization history documented here.
 
 ---
 
+## [1.1.1] - June 18, 2026 - EA Management Critical Fix
+
+### 🐛 Critical Bug Fix: Directional Filter Bypass During Warmup
+
+**Issue:** EAs were opening trades during the regime warmup period, bypassing ALL filters including the directional filter. The dashboard showed "Regime 3 - High Vol Bearish" with status "BLOCKED", but the EA opened BUY positions anyway.
+
+### Root Cause
+
+**Two Critical Problems:**
+
+1. **Python GUI Default Behavior:**
+   - When regime data was not available (during warmup), the GUI returned `allow_trade: True`
+   - This bypassed all configured filters
+   - EAs could trade immediately after connection, before regime calculation completed
+
+2. **No EA-Side Safety Check:**
+   - EA library had no safeguard against trading when `regime: -1` (no data)
+   - No validation that regime data was valid before allowing trades
+   - No waiting mechanism for warmup completion
+
+### The Fix
+
+**1. Python GUI Fix (`src/python/mt5_regime_gui_pyqt.py` - Line 2403):**
+
+Changed default response when regime data is not available:
+
+```python
+# BEFORE (WRONG):
+if regime_data is None:
+    response = {
+        "allow_trade": True,  # ← Bypassed all filters!
+        "regime": -1,
+        "confidence": 0.0,
+        "reason": f"No regime data available for {symbol}"
+    }
+
+# AFTER (FIXED):
+if regime_data is None:
+    response = {
+        "allow_trade": False,  # ← Block until warmup complete
+        "regime": -1,
+        "confidence": 0.0,
+        "reason": f"No regime data available for {symbol} - waiting for warmup to complete"
+    }
+```
+
+**2. EA Library Safety Check (`RegimeFilterLib.mqh` - Line 270):**
+
+Added validation in `RF_IsTradeAllowed()` function:
+
+```mql5
+// SAFETY CHECK: Never trade when regime is -1 (no data / warming up)
+if(g_rf_currentRegime == -1 && g_rf_regimeConfidence == 0.0)
+{
+   Print("[REGIME FILTER] Trade BLOCKED - No regime data available (warming up)");
+   return false;
+}
+```
+
+### Files Modified
+
+1. ✅ `src/python/mt5_regime_gui_pyqt.py` (Line 2403-2408)
+2. ✅ `EAs to add filter/RegimeFilterLib.mqh` (Line 267-287)
+3. ✅ `src/mql/include/RegimeFilterLib.mqh` (Line 267-287)
+4. ✅ Created `EA_MANAGEMENT_FIX.md` (Complete fix documentation)
+
+### Expected Behavior Now
+
+**During Warmup (First 10-30 seconds after connection):**
+```
+[DEBUG] Parsing response: {"allow_trade": false, "regime": -1, "confidence": 0.0, 
+         "reason": "No regime data available for XAUUSD - waiting for warmup to complete"}
+ML Regime Filter BLOCKED buy grid. Regime: -1, Confidence: 0.0%
+Trade blocked - waiting for regime data...
+```
+
+**After Warmup (When regime data is available):**
+```
+[DEBUG] Parsing response: {"allow_trade": false, "regime": 3, "confidence": 98.5,
+         "reason": "Regime 4 is BEARISH, BUY blocked (counter-trend)"}
+ML Regime Filter BLOCKED buy grid. Regime: 3, Confidence: 98.5%
+Directional Filter: Bearish regime blocks BUY trades ✗
+```
+
+### Impact
+
+**What This Fixes:**
+- ✅ **No trades during warmup** - EA waits for valid regime data
+- ✅ **Directional filter respected** - Counter-trend trades blocked from the start
+- ✅ **Regime filter active** - Blocked regimes enforced immediately
+- ✅ **Confidence threshold** - Minimum confidence checked before trading
+- ✅ **Per-EA settings** - Individual EA configurations honored
+
+**Startup Flow:**
+1. EA connects to Python GUI → ✅ Connection established
+2. EA sends 1300 bars for warmup → ✅ Historical data transmitted
+3. Python processes bars (10-30 seconds) → ⏳ Calculating regime
+4. **During this time: ALL trades blocked** → ✅ Safety enforced
+5. Regime calculation completes → ✅ Valid regime data available
+6. Trade requests evaluated with all filters → ✅ Normal operation
+
+### Testing Instructions
+
+**Before Testing:**
+1. Restart Python GUI to load the fix
+2. Recompile EA in MetaTrader to load updated library
+3. Attach EA to chart with regime filter enabled
+4. Watch the terminal logs
+
+**What to Verify:**
+- [ ] During connection (first 30 seconds): No trades open, see "waiting for warmup" messages
+- [ ] After warmup: Trades blocked/allowed based on regime + directional filter
+- [ ] Dashboard "Trade Status" matches EA behavior (BLOCKED = no trades)
+- [ ] EA Management tab shows correct filter configuration
+- [ ] Counter-trend trades blocked (e.g., BUY blocked in bearish regime)
+
+**Example Verification:**
+1. Set directional filter to "Strict" mode
+2. Wait for bearish regime (Regime 3 or 7)
+3. EA should **NOT** open BUY trades
+4. Dashboard should show "BLOCKED" status
+5. EA logs should show "[REGIME FILTER] Trade BLOCKED - Regime X is BEARISH, BUY blocked"
+
+### Migration Notes
+
+**For Existing Users:**
+- ✅ **Action Required:** Restart Python GUI to load the fix
+- ✅ **Action Required:** Recompile EAs to load updated library
+- ❌ **No Code Changes:** EA integration code unchanged
+- ✅ **Improved Safety:** Better protection against unintended trades
+
+**Backward Compatibility:**
+- ✅ Same library API (no function changes)
+- ✅ Same JSON protocol (enhanced validation only)
+- ✅ Same EA integration pattern (just recompile)
+- ✅ Same configuration options (all preserved)
+
+### Documentation
+
+**Complete fix documentation:** `EA_MANAGEMENT_FIX.md`
+
+Includes:
+- Detailed problem analysis
+- Code changes with before/after
+- Expected log output
+- Testing checklist
+- Verification steps
+
+### Related Issues
+
+This fix resolves the issue where:
+- ❌ EA opened BUY trades when regime showed "High Vol Bearish"
+- ❌ Directional filter was not preventing counter-trend trades
+- ❌ Trades occurred immediately after EA connection (during warmup)
+- ❌ Dashboard showed "BLOCKED" but EA traded anyway
+
+All issues now resolved ✅
+
+---
+
 ## [1.1.0] - June 10, 2026 - AI Auto-Integration System
 
 ### 🤖 Major Feature: NVIDIA AI-Powered EA Integration

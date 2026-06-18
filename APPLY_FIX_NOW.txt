@@ -1,0 +1,87 @@
+═══════════════════════════════════════════════════════════════
+  CRITICAL FIX - EA MANAGEMENT DIRECTIONAL FILTER
+═══════════════════════════════════════════════════════════════
+
+ISSUE FIXED:
+EAs were opening trades during warmup, bypassing the directional
+filter. Dashboard showed "High Vol Bearish - BLOCKED" but EA 
+opened BUY trades anyway.
+
+═══════════════════════════════════════════════════════════════
+  APPLY THE FIX (2 SIMPLE STEPS)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: RESTART PYTHON GUI
+---------------------------
+Close the current dashboard and restart it:
+
+   > src\scripts\start_dashboard.bat
+
+This loads the fixed Python code that blocks trades during warmup.
+
+
+STEP 2: RECOMPILE YOUR EA IN METATRADER
+----------------------------------------
+1. Open MetaEditor in MetaTrader 5
+2. Open your EA file (e.g., HybridGridBot.mq5)
+3. Click "Compile" button (or press F7)
+4. Close and reattach the EA to the chart
+
+This loads the updated RegimeFilterLib.mqh with safety checks.
+
+═══════════════════════════════════════════════════════════════
+  WHAT WAS FIXED
+═══════════════════════════════════════════════════════════════
+
+1. Python GUI now returns allow_trade: FALSE when regime data
+   is not available (during warmup period)
+
+2. EA library now validates regime data before allowing trades
+   - Blocks trades when regime = -1 (no data)
+   - Blocks trades when confidence = 0.0%
+
+═══════════════════════════════════════════════════════════════
+  VERIFY THE FIX IS WORKING
+═══════════════════════════════════════════════════════════════
+
+After restarting and recompiling:
+
+✓ Attach EA to chart
+✓ Watch the terminal logs for first 30 seconds
+✓ Should see: "Trade BLOCKED - No regime data available (warming up)"
+✓ NO TRADES should open during this warmup period
+✓ After warmup, directional filter should work correctly
+
+Test directional filter:
+✓ Wait for bearish regime (Regime 3 or 7)
+✓ Dashboard should show "Trade Status: BLOCKED"
+✓ EA should NOT open BUY trades
+✓ Logs should show: "Regime X is BEARISH, BUY blocked (counter-trend)"
+
+═══════════════════════════════════════════════════════════════
+  FILES CHANGED
+═══════════════════════════════════════════════════════════════
+
+Python:
+   src/python/mt5_regime_gui_pyqt.py (Line 2403)
+
+MQL5:
+   EAs to add filter/RegimeFilterLib.mqh (Line 270)
+   src/mql/include/RegimeFilterLib.mqh (Line 270)
+
+═══════════════════════════════════════════════════════════════
+  COMPLETE DOCUMENTATION
+═══════════════════════════════════════════════════════════════
+
+For detailed information:
+   > EA_MANAGEMENT_FIX.md
+
+For version history:
+   > CHANGELOG.md (Version 1.1.1)
+
+═══════════════════════════════════════════════════════════════
+
+Date Fixed: June 18, 2026
+Fix Version: 1.1.1
+
+═══════════════════════════════════════════════════════════════

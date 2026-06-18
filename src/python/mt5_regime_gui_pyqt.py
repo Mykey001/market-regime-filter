@@ -2401,11 +2401,12 @@ class RegimeDashboard(QMainWindow):
                 regime_data = self._get_regime_for_symbol(symbol)
                 
                 if regime_data is None:
+                    # FIXED: Block trades when no regime data is available (EA needs to warm up first)
                     response = {
-                        "allow_trade": True,
+                        "allow_trade": False,
                         "regime": -1,
                         "confidence": 0.0,
-                        "reason": f"No regime data available for {symbol}"
+                        "reason": f"No regime data available for {symbol} - waiting for warmup to complete"
                     }
                 else:
                     current_regime = regime_data["regime_id"]
