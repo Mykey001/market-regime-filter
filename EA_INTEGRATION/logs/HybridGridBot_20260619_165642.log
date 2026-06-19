@@ -1,0 +1,53 @@
+[2026-06-19 16:56:42] ================================================================================
+[2026-06-19 16:56:42] Starting LOCAL integration for: HybridGridBot
+[2026-06-19 16:56:42] Timestamp: 2026-06-19 16:56:42.539880
+[2026-06-19 16:56:42] ================================================================================
+[2026-06-19 16:56:42] Reading EA file: HybridGridBot.mq5
+[2026-06-19 16:56:42]   Size: 59881 characters
+[2026-06-19 16:56:42] Loading RegimeFilterLib.mqh template...
+[2026-06-19 16:56:42]   Size: 16849 characters
+[2026-06-19 16:56:42] Starting ENHANCED LOCAL integration (architecture-aware)...
+[2026-06-19 16:56:42] Starting ENHANCED LOCAL rule-based integration...
+[2026-06-19 16:56:42] Analyzing EA architecture...
+[2026-06-19 16:56:42]   EA Type: grid_martingale
+[2026-06-19 16:56:42]   Grid: True, Martingale: True
+[2026-06-19 16:56:42]   Hedge: False, Basket: True
+[2026-06-19 16:56:42]   Custom trade functions: AddGridLevel
+[2026-06-19 16:56:42] Scanning for trade entry points...
+[2026-06-19 16:56:42]   Found 1 trade entry points
+[2026-06-19 16:56:42]     - AddGridLevel (any) [custom_function]
+[2026-06-19 16:56:42] Step 0: Checking for conflicts with library function names...
+[2026-06-19 16:56:42]   No conflicting functions found.
+[2026-06-19 16:56:42] Step 1: Adding library include...
+[2026-06-19 16:56:42] Step 2: Adding input parameters at global scope...
+[2026-06-19 16:56:42] Step 3: Adding OnInit integration...
+[2026-06-19 16:56:42] Step 4: Adding OnTick integration...
+[2026-06-19 16:56:42] Step 5: Adding intelligent trade filtering based on EA architecture...
+[2026-06-19 16:56:42]   Detected grid_martingale EA - using custom function integration strategy
+[2026-06-19 16:56:42] SUCCESS: Added regime filter in AddGridLevel() (custom function strategy)
+[2026-06-19 16:56:42] SUCCESS: Successfully added 1 intelligent trade filter(s)
+[2026-06-19 16:56:42] Step 5b: Adding grid expansion filtering for grid-based EA...
+[2026-06-19 16:56:42]   Processed 1 grid expansion functions
+[2026-06-19 16:56:42] Step 6: Adding OnDeinit integration...
+[2026-06-19 16:56:42] Step 7: Updating version number...
+[2026-06-19 16:56:42] SUCCESS: Version updated: 1.01 -> 1.2
+[2026-06-19 16:56:42] ================================================================================
+[2026-06-19 16:56:42] SUCCESS: ENHANCED LOCAL integration completed! 2 changes made:
+[2026-06-19 16:56:42]   1. Added regime filter in AddGridLevel() for grid_martingale EA
+[2026-06-19 16:56:42]   2. Updated version from 1.01 to 1.2
+[2026-06-19 16:56:42] ================================================================================
+[2026-06-19 16:56:42] EA Architecture: grid_martingale
+[2026-06-19 16:56:42] ================================================================================
+[2026-06-19 16:56:42] Verifying integration completeness...
+[2026-06-19 16:56:42]   ✓ PASS: Library include
+[2026-06-19 16:56:42]   ✓ PASS: Input parameters
+[2026-06-19 16:56:42]   ✓ PASS: OnInit integration
+[2026-06-19 16:56:42]   ✓ PASS: OnTick integration
+[2026-06-19 16:56:42]   ✓ PASS: OnDeinit integration
+[2026-06-19 16:56:42]   ✓ PASS: Trade filter check
+[2026-06-19 16:56:42] SUCCESS: Core integration complete! Ready to use.
+[2026-06-19 16:56:42] Saving integrated EA to: HybridGridBot.mq5
+[2026-06-19 16:56:43] SUCCESS: Integrated EA saved successfully!
+[2026-06-19 16:56:43] Copying RegimeFilterLib.mqh to output folder...
+[2026-06-19 16:56:43] Enhanced README created: HybridGridBot_README.md
+[2026-06-19 16:56:43] Original file archived to: HybridGridBot_20260619_165643.mq5

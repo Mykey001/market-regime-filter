@@ -1,0 +1,8 @@
+[2026-06-19 16:55:27] ================================================================================
+[2026-06-19 16:55:27] Starting LOCAL integration for: HybridGridBot
+[2026-06-19 16:55:27] Timestamp: 2026-06-19 16:55:27.338728
+[2026-06-19 16:55:27] ================================================================================
+[2026-06-19 16:55:27] Reading EA file: HybridGridBot.mq5
+[2026-06-19 16:55:27]   Size: 59881 characters
+[2026-06-19 16:55:27] Loading RegimeFilterLib.mqh template...
+[2026-06-19 16:55:27] ERROR: Exception during processing: RegimeFilterLib.mqh not found at C:\Users\MYCkey98\Downloads\REGIME MOD\EAs to add filter\RegimeFilterLib.mqh
