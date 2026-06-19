@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════════════════
+  CRITICAL ISSUE FOUND - REGIME 8 INVALID
+═══════════════════════════════════════════════════════════════
+
+Your Python console shows:
+   [UPDATE] Regime 8 (None), Confidence 97.4%
+
+PROBLEM: Regime 8 doesn't exist! Valid regimes are 0-7 only.
+
+This is why your EA never gets valid regime data.
+
+═══════════════════════════════════════════════════════════════
+  IMMEDIATE FIX (DO THIS NOW)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: CLOSE PYTHON DASHBOARD
+-------------------------------
+Click the X to close the dashboard window
+
+
+STEP 2: RESTART PYTHON DASHBOARD
+---------------------------------
+Run this command:
+
+   > src\scripts\start_dashboard.bat
+
+Wait for "Dashboard ready" message
+
+
+STEP 3: REATTACH EA TO CHART
+-----------------------------
+1. Drag EA back onto XAUUSD M5 chart
+2. Wait 30 seconds for warmup
+3. Check logs
+
+
+═══════════════════════════════════════════════════════════════
+  WHAT WAS FIXED
+═══════════════════════════════════════════════════════════════
+
+Added safety check in Python code:
+- If model predicts regime 8 → clamps to regime 7
+- Prevents invalid regime from breaking EA communication
+- Adds error logging for debugging
+
+═══════════════════════════════════════════════════════════════
+  VERIFY IT'S WORKING
+═══════════════════════════════════════════════════════════════
+
+After restarting:
+
+1. PYTHON CONSOLE should show:
+   ✓ Regime 0-7 (not Regime 8)
+   ✓ May see: "[ERROR] Model predicted invalid regime: 8. Clamping..."
+
+2. DASHBOARD should show:
+   ✓ Valid regime name (not "None")
+   ✓ Confidence percentage
+   ✓ Trade Status: ALLOWED or BLOCKED
+
+3. EA LOGS should show (after 30 sec warmup):
+   ✓ regime: 0-7 (not -1)
+   ✓ confidence: >0%
+   ✓ Trades allowed/blocked based on filters
+
+═══════════════════════════════════════════════════════════════
+  WHY THIS HAPPENED
+═══════════════════════════════════════════════════════════════
+
+The ML model file (market_regime_gmm.pkl) is either:
+- Corrupted
+- Trained with wrong number of components
+- Producing out-of-bounds predictions
+
+The safety check I added will fix the symptom by clamping
+invalid predictions to valid range (0-7).
+
+═══════════════════════════════════════════════════════════════
+  COMPLETE DOCUMENTATION
+═══════════════════════════════════════════════════════════════
+
+For technical details:
+   > REGIME_8_FIX.md
+
+═══════════════════════════════════════════════════════════════
+
+Date Fixed: June 18, 2026
+
+═══════════════════════════════════════════════════════════════

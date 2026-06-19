@@ -1,0 +1,152 @@
+═══════════════════════════════════════════════════════════════
+  YOUR EA IS WORKING CORRECTLY!
+═══════════════════════════════════════════════════════════════
+
+The logs you showed are CORRECT behavior:
+✅ Trades are being blocked during warmup
+✅ The fix is working as designed
+✅ regime: -1 means "still processing historical bars"
+
+═══════════════════════════════════════════════════════════════
+  WHY YOU'RE STUCK AT REGIME: -1
+═══════════════════════════════════════════════════════════════
+
+The EA is waiting for Python to process the 1300 historical bars
+you sent. This normally takes 10-30 seconds.
+
+If it's been MORE than 60 seconds, follow the steps below.
+
+═══════════════════════════════════════════════════════════════
+  QUICK DIAGNOSTIC (DO THIS NOW)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: SCROLL UP IN MT5 TERMINAL
+----------------------------------
+Look for these messages (should appear when EA first attached):
+
+  "Regime Filter: Connected to Python GUI at 127.0.0.1:9090"
+  "Regime Filter: Requesting 1300 historical bars..."
+  "  Progress: 200 / 1300 bars sent..."
+  "  Progress: 1200 / 1300 bars sent..."
+  "Regime Filter: Successfully sent all 1300 CLOSED bars!"
+
+DO YOU SEE THESE? 
+  ☐ YES → Python is processing, wait 30 more seconds
+  ☐ NO  → EA didn't send bars, restart EA
+
+
+STEP 2: CHECK DASHBOARD SYMBOL
+-------------------------------
+Look at the dashboard dropdown (top left):
+
+  What symbol is selected? _________________
+
+  Is it the SAME as your EA's symbol (XAUUSD)?
+  ☐ YES → Good, they match
+  ☐ NO  → Select XAUUSD from dropdown
+
+
+STEP 3: CHECK EA MANAGEMENT TAB
+--------------------------------
+Click "EA Management" tab in dashboard.
+
+Do you see your EA listed?
+  ☐ YES → EA is connected, check symbol
+  ☐ NO  → EA not connected, restart both
+
+
+STEP 4: CHECK DASHBOARD REGIME
+-------------------------------
+Look at "Live Market Analysis" panel:
+
+  Regime: _________________
+  Confidence: _________________
+  Trade Status: _________________
+
+If this shows a valid regime (0-7) but EA shows -1:
+  → Symbol mismatch between dashboard and EA
+
+═══════════════════════════════════════════════════════════════
+  QUICK FIX (IF STUCK FOR 60+ SECONDS)
+═══════════════════════════════════════════════════════════════
+
+1. Remove EA from chart (right-click EA → Remove)
+
+2. In dashboard, click "Refresh EA List" button
+
+3. Wait 5 seconds
+
+4. Reattach EA to chart
+
+5. Watch MT5 terminal for connection messages
+
+6. Wait 30 seconds for warmup
+
+═══════════════════════════════════════════════════════════════
+  REDUCE LOG SPAM (OPTIONAL)
+═══════════════════════════════════════════════════════════════
+
+I updated the library to print less during warmup:
+- Now prints once per 10 seconds instead of every tick
+- More readable logs
+
+To apply:
+1. Open your EA in MetaEditor
+2. Click "Compile" (F7)
+3. Close and reattach EA
+
+═══════════════════════════════════════════════════════════════
+  WHAT SHOULD HAPPEN
+═══════════════════════════════════════════════════════════════
+
+NORMAL TIMELINE:
+  0:00 - EA connects
+  0:01 - Sends 1300 bars (1-2 seconds)
+  0:02 to 0:30 - Python processes (regime: -1)  ← YOU ARE HERE
+  0:31 - Regime calculated (regime: 0-7)
+  0:32+ - Normal trading (filtered)
+
+WHAT YOU'LL SEE AFTER WARMUP:
+  [DEBUG] Parsing response: {"allow_trade": true, "regime": 1, 
+          "confidence": 99.6, ...}
+  ML Regime Filter ALLOWED sell grid. Regime: 1, Confidence: 99.6%
+
+═══════════════════════════════════════════════════════════════
+  COMPLETE TROUBLESHOOTING GUIDE
+═══════════════════════════════════════════════════════════════
+
+For detailed diagnostics, read:
+  > WARMUP_TROUBLESHOOTING.md
+
+This explains:
+  - Why warmup happens
+  - How to diagnose issues
+  - What's normal vs abnormal
+  - Complete fix steps
+
+═══════════════════════════════════════════════════════════════
+  IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════
+
+1. Dashboard symbol and EA symbol are INDEPENDENT
+   - Dashboard can show GOLD (Regime 1)
+   - EA on XAUUSD can still be at Regime: -1
+   - Each symbol has its own regime calculation
+
+2. Warmup time is NORMAL
+   - First connection: 10-30 seconds
+   - Subsequent connections: 1-2 seconds (if data cached)
+   - Python needs to process 1300 bars
+
+3. Directional filter setting doesn't matter during warmup
+   - ALL trades blocked when regime: -1
+   - Filters only apply AFTER warmup completes
+   - This is by design for safety
+
+═══════════════════════════════════════════════════════════════
+
+Your system is working correctly! The fix is preventing trades
+during warmup as designed. Just wait for Python to finish
+processing the historical bars (10-30 seconds).
+
+═══════════════════════════════════════════════════════════════

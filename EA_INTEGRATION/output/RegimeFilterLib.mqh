@@ -274,6 +274,20 @@ bool RF_IsTradeAllowed(string action)
    // Reset the trade allowed flag before sending request
    g_rf_tradeAllowed = false;
    
+   // SAFETY CHECK: Never trade when regime is -1 (no data / warming up)
+   if(g_rf_currentRegime == -1 && g_rf_regimeConfidence == 0.0)
+   {
+      // Reduce log spam - print once per 10 seconds
+      static datetime lastWarning = 0;
+      if(TimeCurrent() - lastWarning >= 10)
+      {
+         Print("[REGIME FILTER] Trade BLOCKED - No regime data available yet (still warming up)");
+         Print("  Symbol: ", _Symbol, " | Waiting for Python to process historical bars...");
+         lastWarning = TimeCurrent();
+      }
+      return false;
+   }
+   
    // Send trade request with ea_name for per-EA filtering
    string json = "{";
    json += "\"type\":\"trade_request\",";

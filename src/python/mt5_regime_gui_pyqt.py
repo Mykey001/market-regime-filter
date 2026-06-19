@@ -951,6 +951,7 @@ REGIME_FILTER_CONFIG = {
 REGIME_DIRECTION = {
     0: "bullish", 1: "neutral", 2: "bearish", 3: "bearish",
     4: "neutral", 5: "bearish", 6: "neutral", 7: "bearish",
+    8: "neutral",  # Fallback for invalid regime (should never happen)
 }
 
 USE_DIRECTIONAL_FILTER = True
@@ -1261,6 +1262,12 @@ def predict_regime(df):
     X_scaled = scaler.transform(X_latest)
     
     regime_id = model.predict(X_scaled)[0]
+    
+    # SAFETY CHECK: Model should only predict 0-7 (8 regimes)
+    if regime_id < 0 or regime_id > 7:
+        print(f"[ERROR] Model predicted invalid regime: {regime_id}. Clamping to valid range.")
+        regime_id = np.clip(regime_id, 0, 7)
+    
     probabilities = get_model_probabilities(model, X_scaled)[0]
     confidence = float(np.max(probabilities) * 100)
     
@@ -1268,7 +1275,7 @@ def predict_regime(df):
         "name", REGIME_NAMES.get(regime_id, f"Regime {regime_id}"))
     
     return {
-        "regime_id": regime_id,
+        "regime_id": int(regime_id),  # Ensure it's a Python int, not numpy int
         "regime_name": regime_name,
         "confidence": confidence,
         "probabilities": probabilities,

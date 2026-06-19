@@ -1,0 +1,53 @@
+[2026-06-18 11:20:50] ================================================================================
+[2026-06-18 11:20:50] Starting LOCAL integration for: HedgeGridMartingaleBot
+[2026-06-18 11:20:50] Timestamp: 2026-06-18 11:20:50.260463
+[2026-06-18 11:20:50] ================================================================================
+[2026-06-18 11:20:50] Reading EA file: HedgeGridMartingaleBot.mq5
+[2026-06-18 11:20:50]   Size: 41977 characters
+[2026-06-18 11:20:50] Loading RegimeFilterLib.mqh template...
+[2026-06-18 11:20:50]   Size: 16378 characters
+[2026-06-18 11:20:50] Starting LOCAL integration (no AI needed)...
+[2026-06-18 11:20:50] Starting LOCAL rule-based integration...
+[2026-06-18 11:20:50] Step 0: Checking for conflicts with library function names...
+[2026-06-18 11:20:50]   Found conflicting function(s) in EA: IsTradeAllowed
+[2026-06-18 11:20:50]   Compatibility wrappers will be disabled using RF_NO_COMPATIBILITY to avoid compile errors.
+[2026-06-18 11:20:50] Step 1: Adding library include...
+[2026-06-18 11:20:50] SUCCESS: Library include added after properties
+[2026-06-18 11:20:50] Step 2: Adding input parameters at global scope...
+[2026-06-18 11:20:50] SUCCESS: Input parameters added at global scope
+[2026-06-18 11:20:50] Step 3: Adding OnInit integration...
+[2026-06-18 11:20:50] SUCCESS: OnInit integration added
+[2026-06-18 11:20:50] Step 4: Adding OnTick integration...
+[2026-06-18 11:20:50] SUCCESS: OnTick integration added
+[2026-06-18 11:20:50] Step 5: Adding trade filtering...
+[2026-06-18 11:20:50]   No standard trade patterns detected
+[2026-06-18 11:20:50]   Trade filter not added automatically
+[2026-06-18 11:20:50]   (Manual instructions will be provided in README)
+[2026-06-18 11:20:50] Step 6: Adding OnDeinit integration...
+[2026-06-18 11:20:50] SUCCESS: OnDeinit integration added
+[2026-06-18 11:20:50] Step 7: Updating version number...
+[2026-06-18 11:20:50] SUCCESS: Version updated: 1.00 -> 1.1
+[2026-06-18 11:20:50] ================================================================================
+[2026-06-18 11:20:50] SUCCESS: LOCAL integration completed! 8 changes made:
+[2026-06-18 11:20:50]   1. Handled function conflicts for: IsTradeAllowed by using RF_NO_COMPATIBILITY
+[2026-06-18 11:20:50]   2. Added #include RegimeFilterLib.mqh after properties
+[2026-06-18 11:20:50]   3. Added input parameters at global scope (before first function)
+[2026-06-18 11:20:50]   4. Added RF_InitRegimeFilter() in OnInit()
+[2026-06-18 11:20:50]   5. Added RF_UpdateRegimeFilter() in OnTick()
+[2026-06-18 11:20:50]   6. Trade filter: Not auto-added (custom patterns)
+[2026-06-18 11:20:50]   7. Added RF_DeinitRegimeFilter() in OnDeinit()
+[2026-06-18 11:20:50]   8. Updated version from 1.00 to 1.1
+[2026-06-18 11:20:50] ================================================================================
+[2026-06-18 11:20:50] Verifying integration completeness...
+[2026-06-18 11:20:50]   ✓ PASS: Library include
+[2026-06-18 11:20:50]   ✓ PASS: Input parameters
+[2026-06-18 11:20:50]   ✓ PASS: OnInit integration
+[2026-06-18 11:20:50]   ✓ PASS: OnTick integration
+[2026-06-18 11:20:50]   ✓ PASS: OnDeinit integration
+[2026-06-18 11:20:50]   ✓ PASS: Trade filter check
+[2026-06-18 11:20:50] SUCCESS: Core integration complete! Ready to use.
+[2026-06-18 11:20:50] Saving integrated EA to: HedgeGridMartingaleBot.mq5
+[2026-06-18 11:20:50] SUCCESS: Integrated EA saved successfully!
+[2026-06-18 11:20:50] Copying RegimeFilterLib.mqh to output folder...
+[2026-06-18 11:20:50] README created: HedgeGridMartingaleBot_README.md
+[2026-06-18 11:20:50] Original file archived to: HedgeGridMartingaleBot_20260618_112050.mq5
