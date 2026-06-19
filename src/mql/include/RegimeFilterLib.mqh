@@ -15,8 +15,10 @@ bool g_rf_tradeAllowed = true;
 bool g_rf_connected = false;
 string g_rf_terminalName = "";
 string g_rf_eaName = "";         // Unique EA identifier for per-EA filtering
+string g_rf_eaDisplayName = "";  // Human-readable EA name for dashboard
 string g_rf_receiveBuffer = "";
 datetime g_rf_lastBarTime = 0;
+long g_rf_chartId = 0;           // Unique chart ID for multi-EA support
 
 //--- Regime Filter Input Parameters (you can override these in your EA)
 string g_rf_PythonHost = "127.0.0.1";     // Python GUI Host
@@ -30,8 +32,8 @@ bool g_rf_EnableFilter = true;             // Enable regime filter
 //|   host   - Python GUI host (default "127.0.0.1")                |
 //|   port   - Python GUI port (default 9090)                       |
 //|   enable - Enable/disable filter (default true)                 |
-//|   eaName - Unique EA name for per-EA filtering.                 |
-//|            If empty, auto-generated from Symbol + Account.      |
+//|   eaName - Custom EA name (e.g., "HybridGridBot").              |
+//|            If empty, uses MQL program name.                     |
 //+------------------------------------------------------------------+
 bool RF_InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable = true, string eaName = "")
 {
@@ -39,14 +41,24 @@ bool RF_InitRegimeFilter(string host = "127.0.0.1", int port = 9090, bool enable
    g_rf_PythonPort = port;
    g_rf_EnableFilter = enable;
    
-   // Set EA name - use provided name or auto-generate
+   // Get chart ID for unique identification
+   g_rf_chartId = ChartID();
+   
+   // Set display name (human-readable EA name)
    if(eaName != "")
-      g_rf_eaName = eaName;
+      g_rf_eaDisplayName = eaName;
    else
-      g_rf_eaName = _Symbol + "_" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
+      g_rf_eaDisplayName = MQLInfoString(MQL_PROGRAM_NAME);  // Use actual EA filename
+   
+   // Create TRULY unique EA identifier: DisplayName_Symbol_ChartID
+   // This allows multiple EAs on same symbol to coexist
+   g_rf_eaName = g_rf_eaDisplayName + "_" + _Symbol + "_" + IntegerToString(g_rf_chartId);
    
    Print("=== Regime Filter Initializing ===");
-   Print("  EA Name: ", g_rf_eaName);
+   Print("  EA Display Name: ", g_rf_eaDisplayName);
+   Print("  EA Unique ID: ", g_rf_eaName);
+   Print("  Chart ID: ", g_rf_chartId);
+   Print("  Symbol: ", _Symbol);
    
    // Get terminal name for identification
    g_rf_terminalName = TerminalInfoString(TERMINAL_NAME) + " - " + 
@@ -158,6 +170,8 @@ bool RF_ConnectToGUI()
 //+------------------------------------------------------------------+
 //| Send handshake                                                   |
 //+------------------------------------------------------------------+
+//| Send handshake                                                   |
+//+------------------------------------------------------------------+
 void RF_SendHandshake()
 {
    if(g_rf_socketHandle == INVALID_HANDLE) return;
@@ -166,6 +180,8 @@ void RF_SendHandshake()
    json += "\"type\":\"handshake\",";
    json += "\"terminal\":\"" + g_rf_terminalName + "\",";
    json += "\"ea_name\":\"" + g_rf_eaName + "\",";
+   json += "\"ea_display_name\":\"" + g_rf_eaDisplayName + "\",";  // NEW: Human-readable name
+   json += "\"chart_id\":" + IntegerToString(g_rf_chartId) + ",";  // NEW: Chart ID
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
    json += "}\n";

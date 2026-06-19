@@ -544,9 +544,13 @@ class TerminalSelectorDialog(QDialog):
 class EAConfig:
     """Configuration for an individual EA."""
     
-    def __init__(self, ea_name, symbol="", account="", terminal=""):
-        self.ea_name = ea_name
+    def __init__(self, ea_name, ea_display_name="", symbol="", account="", terminal="", chart_id=""):
+        self.ea_name = ea_name  # Unique ID (EA_Symbol_ChartID)
+        self.ea_display_name = ea_display_name if ea_display_name else ea_name  # Human-readable name
         self.symbol = symbol
+        self.account = account
+        self.terminal = terminal
+        self.chart_id = chart_id  # NEW: Chart ID for identification
         self.account = account
         self.terminal = terminal
         self.allowed_regimes = list(range(8))  # All regimes allowed by default
@@ -606,7 +610,7 @@ class EAConfigDialog(QDialog):
     
     def __init__(self, ea_config, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Configure EA: {ea_config.ea_name}")
+        self.setWindowTitle(f"Configure EA: {ea_config.ea_display_name}")
         self.setModal(True)
         self.setMinimumWidth(600)
         self.setMinimumHeight(700)
@@ -623,11 +627,13 @@ class EAConfigDialog(QDialog):
         info_group = QGroupBox("EA Information")
         info_layout = QGridLayout()
         info_layout.addWidget(QLabel("EA Name:"), 0, 0)
-        info_layout.addWidget(QLabel(self.ea_config.ea_name), 0, 1)
-        info_layout.addWidget(QLabel("Symbol:"), 1, 0)
-        info_layout.addWidget(QLabel(self.ea_config.symbol), 1, 1)
-        info_layout.addWidget(QLabel("Account:"), 2, 0)
-        info_layout.addWidget(QLabel(self.ea_config.account), 2, 1)
+        info_layout.addWidget(QLabel(self.ea_config.ea_display_name), 0, 1)
+        info_layout.addWidget(QLabel("Chart ID:"), 1, 0)
+        info_layout.addWidget(QLabel(str(self.ea_config.chart_id)), 1, 1)
+        info_layout.addWidget(QLabel("Symbol:"), 2, 0)
+        info_layout.addWidget(QLabel(self.ea_config.symbol), 2, 1)
+        info_layout.addWidget(QLabel("Account:"), 3, 0)
+        info_layout.addWidget(QLabel(self.ea_config.account), 3, 1)
         info_group.setLayout(info_layout)
         layout.addWidget(info_group)
         
@@ -2083,22 +2089,25 @@ class RegimeDashboard(QMainWindow):
     # EA MANAGEMENT
     # =============================================================
     
-    def register_ea(self, ea_name, symbol, account, terminal, client_socket):
-        """Register a new EA connection."""
-        ea_key = f"{ea_name}_{symbol}_{account}"
+    def register_ea(self, ea_name, ea_display_name, symbol, account, terminal, chart_id, client_socket):
+        """Register a new EA connection with unique identification."""
+        # Use ea_name as the key (already unique: DisplayName_Symbol_ChartID)
+        ea_key = ea_name
         if ea_key not in self.connected_eas:
-            ea_config = EAConfig(ea_name, symbol, account, terminal)
+            ea_config = EAConfig(ea_name, ea_display_name, symbol, account, terminal, chart_id)
             self.connected_eas[ea_key] = ea_config
             self.ea_socket_map[ea_key] = client_socket
-            print(f"[EA] Registered: {ea_name} ({symbol}, {account}) - Key: {ea_key}")
+            print(f"[EA] Registered: {ea_display_name} ({symbol}) - Chart ID: {chart_id}")
+            print(f"     Unique Key: {ea_key}")
         else:
             # Update existing EA
             self.connected_eas[ea_key].connected = True
             self.connected_eas[ea_key].symbol = symbol
             self.connected_eas[ea_key].account = account
             self.connected_eas[ea_key].terminal = terminal
+            self.connected_eas[ea_key].chart_id = chart_id
             self.ea_socket_map[ea_key] = client_socket
-            print(f"[EA] Reconnected: {ea_name} ({symbol}, {account}) - Key: {ea_key}")
+            print(f"[EA] Reconnected: {ea_display_name} ({symbol}) - Chart ID: {chart_id}")
     
     def unregister_ea(self, ea_key):
         """Unregister an EA connection."""
@@ -2131,8 +2140,9 @@ class RegimeDashboard(QMainWindow):
             row = self.ea_table.rowCount()
             self.ea_table.insertRow(row)
             
-            # EA Name
-            name_item = QTableWidgetItem(ea_config.ea_name)
+            # EA Name (use display name for better readability)
+            name_item = QTableWidgetItem(ea_config.ea_display_name)
+            name_item.setToolTip(f"Chart ID: {ea_config.chart_id}\nUnique ID: {ea_config.ea_name}")
             if ea_config.connected:
                 name_item.setForeground(QColor("#00ff00"))
             else:
@@ -2197,23 +2207,11 @@ class RegimeDashboard(QMainWindow):
             print(f"  Volatility filter: {'ON' if ea_config.use_volatility_filter else 'OFF'}")
             self.refresh_ea_table()
     
-    def get_ea_config(self, ea_name, symbol="", account=""):
-        """Get EA configuration by name, symbol, and account."""
-        ea_key = f"{ea_name}_{symbol}_{account}"
-        if ea_key in self.connected_eas:
-            return self.connected_eas[ea_key]
-            
-        # Fallback to name/symbol match
-        for config in self.connected_eas.values():
-            if config.ea_name == ea_name:
-                if symbol and config.symbol.upper() == symbol.upper():
-                    return config
-                    
-        # Fallback to name-only match
-        for config in self.connected_eas.values():
-            if config.ea_name == ea_name:
-                return config
-                
+    def get_ea_config(self, ea_name):
+        """Get EA configuration by unique EA name (which includes chart ID)."""
+        # ea_name is already the unique key: DisplayName_Symbol_ChartID
+        if ea_name in self.connected_eas:
+            return self.connected_eas[ea_name]
         return None
     
     # =============================================================
@@ -2399,10 +2397,9 @@ class RegimeDashboard(QMainWindow):
                 symbol = data.get("symbol", "")
                 action = data.get("action", "").lower()
                 ea_name = data.get("ea_name", "UnknownEA")
-                account = str(data.get("account", ""))
                 
-                # Get EA-specific configuration
-                ea_config = self.get_ea_config(ea_name, symbol, account)
+                # Get EA-specific configuration using unique ea_name
+                ea_config = self.get_ea_config(ea_name)
                 
                 # Fetch regime for the EA's SPECIFIC symbol (not the dashboard symbol)
                 regime_data = self._get_regime_for_symbol(symbol)
@@ -2462,17 +2459,19 @@ class RegimeDashboard(QMainWindow):
                         print(f"[DEBUG] Directional Filter: Regime={current_regime} (R{current_regime+1}), Direction={regime_direction}, Action={action}, Mode={dir_mode}")
                         
                         if dir_mode == "strict":
+                            # Strict mode: Block counter-trend trades (but ALLOW neutral regimes)
                             if regime_direction == "bullish" and action == "sell":
                                 allow_trade = False
                                 block_reason = f"Regime {current_regime+1} is BULLISH, SELL blocked (counter-trend)"
                             elif regime_direction == "bearish" and action == "buy":
                                 allow_trade = False
                                 block_reason = f"Regime {current_regime+1} is BEARISH, BUY blocked (counter-trend)"
-                            elif regime_direction == "neutral":
-                                allow_trade = False
-                                block_reason = f"Regime {current_regime+1} is NEUTRAL (no clear direction in strict mode)"
+                            # NOTE: Neutral regimes are ALLOWED in strict mode (both BUY and SELL)
+                            # User controls which neutral regimes via regime filter checkboxes
                         
                         elif dir_mode == "allow_neutral":
+                            # Allow neutral mode: Same as strict (counter-trend blocking)
+                            # This mode name is misleading - it should be same as strict
                             if regime_direction == "bullish" and action == "sell":
                                 allow_trade = False
                                 block_reason = f"Regime {current_regime+1} is BULLISH, SELL blocked (counter-trend)"
@@ -2508,24 +2507,27 @@ class RegimeDashboard(QMainWindow):
             elif msg_type == "handshake":
                 terminal = data.get("terminal", "Unknown")
                 ea_name = data.get("ea_name", "UnknownEA")
+                ea_display_name = data.get("ea_display_name", ea_name)  # NEW: Get display name
+                chart_id = str(data.get("chart_id", "0"))  # NEW: Get chart ID
                 symbol = data.get("symbol", "")
                 account = str(data.get("account", ""))
                 
-                print(f"[HANDSHAKE] EA connected: {ea_name} on {terminal} (symbol={symbol}, account={account})")
+                print(f"[HANDSHAKE] EA connected: {ea_display_name} on {terminal}")
+                print(f"            Symbol: {symbol}, Chart ID: {chart_id}")
                 
-                # Register EA
-                self.register_ea(ea_name, symbol, account, terminal, client_socket)
+                # Register EA with new parameters
+                self.register_ea(ea_name, ea_display_name, symbol, account, terminal, chart_id, client_socket)
                 
                 # Signal GUI to update EA table (thread-safe)
                 self.sig_ea_registered.emit()
                 
                 response = {
                     "status": "connected",
-                    "message": f"Dashboard ready. EA '{ea_name}' registered."
+                    "message": f"Dashboard ready. EA '{ea_display_name}' registered."
                 }
                 response_json = json.dumps(response) + "\n"
                 client_socket.sendall(response_json.encode('utf-8'))
-                return f"{ea_name}_{symbol}_{account}"
+                return ea_name  # Return the unique EA name
         
         except json.JSONDecodeError:
             print(f"[SERVER] Invalid JSON: {message}")
