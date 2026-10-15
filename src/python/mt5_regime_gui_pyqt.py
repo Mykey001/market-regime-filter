@@ -1497,7 +1497,9 @@ class RegimeDashboard(QMainWindow):
         self.trade_status_label = QLabel("--")
         self.trade_status_label.setFont(QFont("Arial", 12, QFont.Bold))
         self.update_time_label = QLabel("--")
-        self.model_label = QLabel(os.path.basename(model_path) if model_path else "Unknown")
+        self.model_label = QLabel(
+            f"Regime Engine v{RE.ENGINE_VERSION}"
+            + ("" if RE.load_calibration() is not None else " (uncalibrated)"))
         
         value_labels = [
             self.price_label, self.regime_label, self.confidence_label,
