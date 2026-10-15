@@ -8,7 +8,7 @@
 ║  Version:     1.0.0                                                          ║
 ║  Platform:    MetaTrader 5                                                   ║
 ║  Framework:   PyQt5 with Dark Mode Theme                                     ║
-║  ML Model:    Bayesian Gaussian Mixture Model (8 components)                ║
+║  Detector:    Regime Engine v2 (volatility x trend, calibrated)             ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -31,9 +31,9 @@ USAGE:
 
 REQUIREMENTS:
     - Python 3.8+
-    - PyQt5, MetaTrader5, pandas, numpy, scikit-learn, matplotlib, joblib
+    - PyQt5, MetaTrader5, pandas, numpy, matplotlib
     - MT5 running and logged in
-    - Model files: market_regime_gmm.pkl, scaler.pkl
+    - models/regime_calibration.json (confidence tables; optional)
 
 AUTHOR:
     ML Trading System Developer
@@ -65,12 +65,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import threading
-import joblib
 import os
 import time
 import socket
 
-from feature_engine import compute_all_features, get_feature_matrix, FEATURE_NAMES
+import regime_engine as RE
 
 # ============================================================
 # CONFIGURATION
@@ -78,7 +77,18 @@ from feature_engine import compute_all_features, get_feature_matrix, FEATURE_NAM
 
 DEFAULT_SYMBOL = "XAUUSD"
 DEFAULT_TIMEFRAME = mt5.TIMEFRAME_M5
-DEFAULT_BARS = 800
+TIMEFRAME_MINUTES = {
+    mt5.TIMEFRAME_M1: 1, mt5.TIMEFRAME_M5: 5, mt5.TIMEFRAME_M15: 15, mt5.TIMEFRAME_M30: 30,
+    mt5.TIMEFRAME_H1: 60, mt5.TIMEFRAME_H4: 240, mt5.TIMEFRAME_D1: 1440,
+}
+
+
+def bars_needed(timeframe):
+    """Closed bars the regime engine needs (60-session volatility reference)."""
+    return RE.required_bars(TIMEFRAME_MINUTES.get(timeframe, 5))
+
+
+DEFAULT_BARS = bars_needed(DEFAULT_TIMEFRAME)
 REFRESH_SECONDS = 10
 
 # Socket server configuration
@@ -871,94 +881,32 @@ class SymbolBrowserDialog(QDialog):
 
 
 # ============================================================
-# LOAD SAVED MODEL AND SCALER
+# REGIME ENGINE (replaces market_regime_gmm.pkl + scaler.pkl)
 # ============================================================
+# Regimes come from regime_engine.py: a volatility axis (range vs. the normal
+# range for this time of day) and a trend axis (net move vs. path noise),
+# each with hysteresis. Confidence is a calibrated hit rate loaded from
+# models/regime_calibration.json (see calibrate_regime_engine.py).
 
-# Get project root directory (2 levels up from src/python/)
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(script_dir))
-
-# Model paths (search in models/ folder and fallback to script dir for backward compatibility)
-MODEL_PATHS = [
-    os.path.join(project_root, "models", "market_regime_gmm.pkl"),
-    os.path.join(project_root, "models", "market_regime_model.pkl"),
-    os.path.join(script_dir, "market_regime_model.pkl"),  # Fallback
-    os.path.join(script_dir, "market_regime_gmm.pkl"),    # Fallback
-]
-
-SCALER_PATHS = [
-    os.path.join(project_root, "models", "scaler.pkl"),
-    os.path.join(project_root, "models", "regime_scaler.pkl"),
-    os.path.join(script_dir, "regime_scaler.pkl"),  # Fallback
-    os.path.join(script_dir, "scaler.pkl"),         # Fallback
-]
-METADATA_PATH = os.path.join(project_root, "models", "regime_metadata.json")
-
-model = None
-model_path = None
-for path in MODEL_PATHS:
-    if os.path.exists(path):
-        try:
-            model = joblib.load(path)
-            model_path = path
-            break
-        except Exception:
-            continue
-
-scaler = None
-scaler_path = None
-for path in SCALER_PATHS:
-    if os.path.exists(path):
-        try:
-            scaler = joblib.load(path)
-            scaler_path = path
-            break
-        except Exception:
-            continue
-
-metadata = {}
-if os.path.exists(METADATA_PATH):
-    try:
-        with open(METADATA_PATH, "r") as f:
-            metadata = json.load(f)
-    except Exception:
-        metadata = {}
-
-if model is None or scaler is None:
-    raise Exception("Failed loading saved regime model or scaler.")
-
-REGIME_MAP = metadata.get("regime_map", {})
+if RE.load_calibration() is None:
+    print("[REGIME] WARNING: models/regime_calibration.json not found - "
+          "confidence uses the uncalibrated fallback.")
 
 # ============================================================
 # REGIME LABELS - Named Regime 1-8
 # ============================================================
 
-REGIME_NAMES = {
-    0: "Regime 1 - Low Vol Bullish",
-    1: "Regime 2 - Neutral Consolidation",
-    2: "Regime 3 - High Vol Bearish",
-    3: "Regime 4 - Low Vol Bearish",
-    4: "Regime 5 - Extreme Vol Spike",
-    5: "Regime 6 - Crisis Mode",
-    6: "Regime 7 - High Vol Mixed",
-    7: "Regime 8 - Bearish Trending"
-}
+REGIME_NAMES = {rid: f"Regime {rid + 1} - {info['name']}" for rid, info in RE.REGIMES.items()}
 
 REGIME_COLORS = {
     0: "#00ff00", 1: "#ffa500", 2: "#ff0000", 3: "#9370db",
-    4: "#ff1493", 5: "#dc143c", 6: "#ffd700", 7: "#ff4500"
+    4: "#ff1493", 5: "#dc143c", 6: "#ffd700", 7: "#00ced1"
 }
 
-REGIME_FILTER_CONFIG = {
-    0: True, 1: True, 2: False, 3: True,
-    4: False, 5: False, 6: True, 7: True,
-}
+REGIME_FILTER_CONFIG = {rid: info["allow"] for rid, info in RE.REGIMES.items()}
 
-REGIME_DIRECTION = {
-    0: "bullish", 1: "neutral", 2: "bearish", 3: "bearish",
-    4: "neutral", 5: "bearish", 6: "neutral", 7: "bearish",
-    8: "neutral",  # Fallback for invalid regime (should never happen)
-}
+REGIME_DIRECTION = {rid: info["direction"] for rid, info in RE.REGIMES.items()}
+REGIME_DIRECTION[8] = "neutral"  # Fallback for invalid regime (should never happen)
 
 USE_DIRECTIONAL_FILTER = True
 DIRECTIONAL_FILTER_MODE = "strict"
@@ -1225,7 +1173,8 @@ def fetch_market_data(symbol, timeframe, bars=DEFAULT_BARS, terminal_path=None):
             
             # Fetch rates
             print(f"[MT5] Fetching {bars} bars...")
-            rates = mt5.copy_rates_from_pos(actual_symbol, timeframe, 0, bars)
+            # start_pos=1: closed bars only (bar 0 is still forming)
+            rates = mt5.copy_rates_from_pos(actual_symbol, timeframe, 1, bars)
             
             if rates is None or len(rates) == 0:
                 error = mt5.last_error()
@@ -1247,48 +1196,31 @@ def fetch_market_data(symbol, timeframe, bars=DEFAULT_BARS, terminal_path=None):
 # PREDICTION ENGINE
 # ============================================================
 
-def get_model_probabilities(model, X):
-    if hasattr(model, "predict_proba"):
-        return model.predict_proba(X)
-    if hasattr(model, "score_samples"):
-        result = model.score_samples(X)
-        if isinstance(result, tuple) and len(result) == 2:
-            return result[1]
-    raise ValueError("Model does not support probability estimates")
-
-def predict_regime(df):
-    df_feat = compute_all_features(df)
-    X, valid_df = get_feature_matrix(df_feat, drop_na=True)
-    
-    if len(valid_df) == 0:
-        raise Exception("Not enough historical bars to compute features.")
-    
-    latest = valid_df.iloc[[-1]]
-    X_latest = latest[FEATURE_NAMES].values.astype(np.float64)
-    X_scaled = scaler.transform(X_latest)
-    
-    regime_id = model.predict(X_scaled)[0]
-    
-    # SAFETY CHECK: Model should only predict 0-7 (8 regimes)
-    if regime_id < 0 or regime_id > 7:
-        print(f"[ERROR] Model predicted invalid regime: {regime_id}. Clamping to valid range.")
-        regime_id = np.clip(regime_id, 0, 7)
-    
-    probabilities = get_model_probabilities(model, X_scaled)[0]
-    confidence = float(np.max(probabilities) * 100)
-    
-    regime_name = REGIME_MAP.get(str(regime_id), {}).get(
-        "name", REGIME_NAMES.get(regime_id, f"Regime {regime_id}"))
-    
+def predict_regime(df, timeframe=None):
+    """Detect the current regime from CLOSED bars (see regime_engine.py)."""
+    df = df.set_index("time") if "time" in df.columns else df
+    tf_minutes = TIMEFRAME_MINUTES.get(timeframe) if timeframe is not None else None
+    r = RE.detect_regime(df, tf_minutes)
+    sc = r["scores"]
     return {
-        "regime_id": int(regime_id),  # Ensure it's a Python int, not numpy int
-        "regime_name": regime_name,
-        "confidence": confidence,
-        "probabilities": probabilities,
-        "price": latest["close"].iloc[0],
-        "time": latest.index[0],
-        "featured_df": valid_df,
-        "features": {name: float(latest[name].iloc[0]) for name in FEATURE_NAMES if name in latest.columns}
+        "regime_id": r["regime_id"],
+        "regime_name": r["regime_name"],
+        "confidence": r["confidence"],
+        "probabilities": r["probabilities"],
+        "price": r["price"],
+        "time": r["time"],
+        "featured_df": r["series"],
+        "features": {
+            "vol_state": r["vol_state"],
+            "trend_state": r["trend_state"],
+            "vol_ratio_2h (x normal)": sc["vol_ratio_2h"],
+            "vol_ratio_1h (x normal)": sc["vol_ratio_1h"],
+            "trend_z_6h": sc["trend_z_6h"],
+            "P(vol state correct)": sc["p_vol_state"],
+            "P(trend state correct)": sc["p_trend_state"],
+            "bar_time": str(r["time"]),
+            "engine": f"v{RE.ENGINE_VERSION}" + (" calibrated" if r["calibrated"] else " (no calibration)"),
+        },
     }
 
 # ============================================================
@@ -1838,8 +1770,8 @@ class RegimeDashboard(QMainWindow):
         
         try:
             print(f"[UPDATE] Fetching data for {symbol} from terminal: {terminal_path}")
-            df = fetch_market_data(symbol, timeframe, DEFAULT_BARS, terminal_path)
-            result = predict_regime(df)
+            df = fetch_market_data(symbol, timeframe, bars_needed(timeframe), terminal_path)
+            result = predict_regime(df, timeframe)
             
             # Store current regime
             self.current_regime = result['regime_id']
@@ -1913,45 +1845,39 @@ class RegimeDashboard(QMainWindow):
             self.prob_table.setItem(i, 2, item_prob)
     
     def update_charts(self, df, current_regime):
-        """Update price and RSI charts."""
+        """Price coloured by regime (last 2 days) and the two regime scores."""
         self.ax_price.clear()
         self.ax_rsi.clear()
-        
-        # Price chart
-        self.ax_price.plot(df.index, df['close'], label='Close Price', 
-                          color='#4da6ff', linewidth=1.5)
-        if 'price_position' in df.columns:
-            self.ax_price.plot(df.index, df['price_position'] * df['close'].max(),
-                              label='Price Position', color='#ffa500', 
-                              linewidth=1, alpha=0.7)
-        
-        self.ax_price.set_title('Price Chart', color='#4da6ff', fontweight='bold')
+        df = df.tail(576)
+
+        self.ax_price.plot(df.index, df['close'], color='#4da6ff', linewidth=1.0, label='Close')
+        for rid in sorted(df['regime_id'].unique()):
+            part = df[df['regime_id'] == rid]
+            self.ax_price.scatter(part.index, part['close'], s=4,
+                                  color=REGIME_COLORS.get(int(rid), "#ffffff"),
+                                  label=REGIME_NAMES.get(int(rid), str(rid)))
+        self.ax_price.set_title('Price coloured by detected regime', color='#4da6ff', fontweight='bold')
         self.ax_price.set_ylabel('Price', color='#e0e0e0')
-        self.ax_price.legend(loc='upper left', facecolor='#2d2d2d', 
-                            edgecolor='#3d3d3d', labelcolor='#e0e0e0')
+        self.ax_price.legend(loc='upper left', facecolor='#2d2d2d', edgecolor='#3d3d3d',
+                             labelcolor='#e0e0e0', fontsize=7, markerscale=3)
         self.ax_price.grid(True, alpha=0.2, color='#3d3d3d')
-        
-        # RSI chart
-        if 'rsi_14' in df.columns:
-            self.ax_rsi.plot(df.index, df['rsi_14'], label='RSI 14', 
-                            color='#9370db', linewidth=1.5)
-            self.ax_rsi.axhline(y=70, color='#ff0000', linestyle='--', 
-                               alpha=0.5, label='Overbought')
-            self.ax_rsi.axhline(y=30, color='#00ff00', linestyle='--', 
-                               alpha=0.5, label='Oversold')
-        
+
+        self.ax_rsi.plot(df.index, df['trend_z'], color='#9370db', linewidth=1.2, label='Trend Z (6h)')
+        self.ax_rsi.plot(df.index, df['vol_ratio'], color='#ffa500', linewidth=1.2, label='Vol x normal (2h)')
+        for y, c in [(RE.TR_IN, '#00ff00'), (-RE.TR_IN, '#ff0000'), (RE.HI_IN, '#ffd700'), (RE.EX_IN, '#ff1493')]:
+            self.ax_rsi.axhline(y=y, color=c, linestyle='--', alpha=0.5)
         regime_name = REGIME_NAMES.get(current_regime, f"Regime {current_regime}")
-        self.ax_rsi.set_title(f'RSI - Current: {regime_name}', 
-                             color='#4da6ff', fontweight='bold')
-        self.ax_rsi.set_ylabel('RSI', color='#e0e0e0')
+        self.ax_rsi.set_title(f'Regime scores - Current: {regime_name}',
+                              color='#4da6ff', fontweight='bold')
+        self.ax_rsi.set_ylabel('Score', color='#e0e0e0')
         self.ax_rsi.set_xlabel('Time', color='#e0e0e0')
-        self.ax_rsi.legend(loc='upper left', facecolor='#2d2d2d', 
-                          edgecolor='#3d3d3d', labelcolor='#e0e0e0')
+        self.ax_rsi.legend(loc='upper left', facecolor='#2d2d2d',
+                           edgecolor='#3d3d3d', labelcolor='#e0e0e0')
         self.ax_rsi.grid(True, alpha=0.2, color='#3d3d3d')
-        
+
         self.figure.tight_layout()
         self.canvas.draw()
-    
+
     def update_statistics(self, features):
         """Update statistics table with feature values."""
         self.stats_table.setRowCount(len(features))
@@ -1962,7 +1888,7 @@ class RegimeDashboard(QMainWindow):
             self.stats_table.setItem(i, 0, item_name)
             
             # Feature value
-            item_value = QTableWidgetItem(f"{value:.6f}")
+            item_value = QTableWidgetItem(f"{value:.4f}" if isinstance(value, float) else str(value))
             self.stats_table.setItem(i, 1, item_value)
     
     # =============================================================
@@ -2006,14 +1932,14 @@ class RegimeDashboard(QMainWindow):
         """Conservative preset: block high volatility regimes."""
         global REGIME_FILTER_CONFIG
         conservative_config = {0: True, 1: True, 2: False, 3: True,
-                              4: False, 5: False, 6: True, 7: True}
+                              4: False, 5: False, 6: False, 7: False}
         
         for regime_id, allow in conservative_config.items():
             if regime_id in self.regime_checkboxes:
                 self.regime_checkboxes[regime_id].setChecked(allow)
                 REGIME_FILTER_CONFIG[regime_id] = allow
         
-        print("[CONFIG] Preset: CONSERVATIVE (Block R3, R5, R6)")
+        print("[CONFIG] Preset: CONSERVATIVE (Block high/extreme vol: R3, R5, R6, R7, R8)")
     
     def on_dir_filter_changed(self, state):
         """Handle directional filter enable/disable."""
@@ -2358,8 +2284,8 @@ class RegimeDashboard(QMainWindow):
         
         try:
             timeframe = self.selected_timeframe_val
-            df = fetch_market_data(symbol, timeframe, DEFAULT_BARS, terminal_path)
-            result = predict_regime(df)
+            df = fetch_market_data(symbol, timeframe, bars_needed(timeframe), terminal_path)
+            result = predict_regime(df, timeframe)
             
             cache_entry = {
                 "regime_id": result['regime_id'],

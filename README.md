@@ -30,10 +30,10 @@ Expert Advisors (EAs) often trade blindly without understanding current market c
 This ML system **automatically identifies 8 distinct market conditions** and tells your EA whether to trade or stay out:
 
 ```
-Market Analysis → ML Prediction → Trade Filter → Your EA
+Market Analysis → Regime Engine → Trade Filter → Your EA
      ↓                  ↓              ↓            ↓
    OHLCV          Regime 5?      BLOCK TRADE    No order
-  14 Features     Crisis Mode                   placed
+  vol x trend     Crisis Mode                   placed
 ```
 
 ### Real-World Example
@@ -76,72 +76,53 @@ The system connects to MetaTrader 5 and collects M5 (5-minute) candle data:
 - Time
 ```
 
-### 2. Feature Engineering (14 Technical Indicators)
+### 2. Regime Detection (Regime Engine v2)
 
-The system calculates 14 advanced features across 4 categories:
+> The original Bayesian GMM (14 features) was replaced in October 2026 after an audit
+> showed its labels were inaccurate - see `DOCUMENTATION/REGIME_ENGINE_V2.md`.
 
-**A. Volatility Features (4)**
-- 1-hour rolling volatility
-- 1-day rolling volatility
-- Normalized Average True Range (ATR)
-- Bollinger Band width
+The regime is built from two scale-free axes computed on **closed** bars only
+(`src/python/regime_engine.py`). Neither uses price level, spread or tick volume, so
+the same thresholds work on any broker and instrument:
 
-**B. Trend Features (4)**
-- Short-term trend (EMA 1h vs 4h)
-- Long-term trend (EMA 4h vs 2d)
-- MACD histogram (normalized)
-- Price position in daily high-low range
+- **Volatility** - bar range relative to the normal range *for that time of day* over the
+  last 60 sessions. High when the 2h average is >= 1.6x normal, extreme at >= 2.8x
+  (or a 1h burst >= 3.5x).
+- **Trend** - 6h net move divided by the path's own noise (a random walk scores ~N(0,1)).
+  Up at >= +1.5, down at <= -1.5.
 
-**C. Momentum Features (3)**
-- Wilder's RSI (14-period)
-- RSI rate of change
-- Returns skewness
+Hysteresis bands stop the regime from flickering (about 5 changes per day).
+**Confidence** is a calibrated hit rate: "75%" means the label matched hindsight about 75%
+of the time on the calibration data (`models/regime_calibration.json`).
 
-**D. Microstructure Features (3)**
-- Volume surge ratio
-- Normalized bid-ask spread
-- Variance ratio (trending vs mean-reverting)
+### 3. Validation (XAUUSDm M5, tuned on 2022-24, tested on 2025-26)
 
-**Performance:** Computes all 14 features in <100ms for 1300 bars.
+| Held-out 2025-26 | New engine | Old GMM (as live) | Old GMM (best case) | Always "Range" |
+|---|---|---|---|---|
+| Regime matches hindsight | **63%** | 4% | 36% | 54% |
+| Volatility state correct | **89%** | 5% | 78% | 79% |
+| Trend direction correct when called | **91%** | 66% | 46% | - |
+| Extreme-vol bars caught | **85%** | 100% (blocks everything) | 15% | 0% |
+| Regime changes per day | **5.2** | 0.1 | 16 | 0 |
 
-### 3. ML Prediction (Gaussian Mixture Model)
-
-A trained **Bayesian GMM** model (8 components) analyzes the 14 features and identifies the current market regime:
-
-```python
-Input: Feature Matrix (1300 bars × 14 features)
-       ↓
-Step 1: RobustScaler Normalization
-       ↓
-Step 2: GMM Prediction
-       ↓
-Output: Regime ID (0-7) + Confidence Score (0-100%)
-```
-
-**Model Training:**
-- Trained on 536,000+ historical M5 bars
-- Unsupervised learning (no manual labeling)
-- Identifies natural market clusters
-- Validated across multiple instruments and timeframes
+The same settings and calibration hold on XAGUSD, EURUSD, US500 and on M15/H1 without refitting.
+Detected volatility predicts the next 4h (normal 1.06x, high 1.66x, extreme 3.0x normal vol).
+The trend state describes the current move; it does **not** forecast the next 12h.
 
 ### 4. Market Regimes Explained
 
-The model identifies 8 distinct market states:
+| Regime | Name | Volatility | Direction | Default |
+|--------|------|------------|-----------|---------|
+| **1** (id 0) | Bullish Trend | Normal | Up | ✅ Allow |
+| **2** (id 1) | Range / Consolidation | Normal | Sideways | ✅ Allow |
+| **3** (id 2) | High Vol Bearish | High | Down | ❌ Block |
+| **4** (id 3) | Bearish Trend | Normal | Down | ✅ Allow |
+| **5** (id 4) | Extreme Vol Spike | Extreme | Up / none | ❌ Block |
+| **6** (id 5) | Crash / Crisis | Extreme | Down | ❌ Block |
+| **7** (id 6) | High Vol Choppy | High | Sideways | ✅ Allow |
+| **8** (id 7) | High Vol Bullish | High | Up | ✅ Allow |
 
-| Regime | Name | Volatility | Direction | Trade? | Strategy |
-|--------|------|------------|-----------|--------|----------|
-| **0** | Low Vol Bullish | Low | Up | ✅ | Trend following |
-| **1** | Neutral Consolidation | Low | Sideways | ✅ | Range/mean reversion |
-| **2** | High Vol Bearish | High | Down | ⚠️ | Dangerous - BLOCK |
-| **3** | Low Vol Bearish | Low | Down | ✅ | Trend following |
-| **4** | Extreme Vol Spike | Extreme | Chaotic | ❌ | Flash crash - BLOCK |
-| **5** | Crisis Mode | Extreme | Panic | ❌ | Market panic - BLOCK |
-| **6** | High Vol Mixed | High | Mixed | ⚠️ | Selective trades |
-| **7** | Bearish Trending | Medium | Down | ✅ | Trend following |
-
-**Default Configuration:**
-- ✅ **Allow Trading:** Regimes 0, 1, 3, 6, 7 (safe conditions)
-- ❌ **Block Trading:** Regimes 2, 4, 5 (dangerous conditions)
+IDs 0-7 and the EA socket protocol are unchanged.
 
 ### 5. Trade Filtering System
 
@@ -225,8 +206,8 @@ The system provides a professional PyQt5 dark-mode dashboard for monitoring and 
 **Key Features:**
 - ✅ Real-time regime detection
 - ✅ Confidence scoring
-- ✅ Visual charts (price, RSI)
-- ✅ All 14 features visible
+- ✅ Visual charts (price coloured by regime, regime scores)
+- ✅ Regime scores and per-axis confidence visible
 - ✅ Configurable filters (check/uncheck regimes)
 - ✅ Server status and EA connection indicator
 - ✅ Dark mode theme (reduced eye strain)
@@ -336,9 +317,10 @@ REGIME MOD/
 │       ├── start_dashboard.bat       ← Launch dashboard
 │       └── fix_firewall.bat          ← Windows firewall fix
 │
-├── models/                     ← ML models
-│   ├── market_regime_gmm.pkl         ← Trained GMM model
-│   └── scaler.pkl                    ← Feature scaler
+├── models/                     ← Model files
+│   ├── regime_calibration.json       ← Regime Engine v2 confidence tables
+│   ├── market_regime_gmm.pkl         ← Old GMM (no longer used)
+│   └── scaler.pkl                    ← Old GMM scaler (no longer used)
 │
 ├── config/                     ← Configuration
 │   └── requirements.txt              ← Python dependencies
@@ -608,24 +590,18 @@ Sends OHLCV + Volume + Spread
 Python Dashboard (Socket Server Port 9090)
 ```
 
-### 2. Feature Engineering
+### 2. Regime Scores
 ```
-14 Technical Features Computed:
-├── Volatility (4): 1h/1d volatility, ATR, Bollinger width
-├── Trend (4): Short/long EMA ratios, MACD, price position  
-├── Momentum (3): RSI, RSI rate, returns skewness
-└── Microstructure (3): Volume ratio, spread, variance ratio
+Closed bars (60 sessions of history)
+├── Volatility: bar range / normal range for this time of day (2h and 1h averages)
+└── Trend: 6h net move / path noise (Z score)
 ```
 
-### 3. Regime Prediction
+### 3. Regime Detection
 ```
-Feature Matrix (1300 bars × 14 features)
+Scores → hysteresis thresholds → (vol state, trend state)
     ↓
-RobustScaler Normalization
-    ↓
-Bayesian GMM Model (8 components)
-    ↓
-Regime ID + Confidence Score (0-100%)
+Regime ID 0-7 + calibrated confidence (0-100%)
 ```
 
 ### 4. Trade Filtering
@@ -794,11 +770,11 @@ pip install PyQt5
 ### No regime predictions
 
 **Dashboard shows "Warming up..."**
-- Wait for 1300 M5 bars (~4.5 days of data)
+- The engine needs ~16,700 closed M5 bars (60 sessions); at least 20 sessions to start
 - Or manually load history in MT5 (F2 → Symbol → Request history)
 
 **All regimes show 0%**
-- Check model files exist: `models\market_regime_gmm.pkl`, `models\scaler.pkl`
+- Check `models/regime_calibration.json` exists (without it confidence is uncalibrated)
 - Verify symbol has price data
 - Try clicking "Refresh Now"
 
@@ -870,8 +846,8 @@ See `docs\TROUBLESHOOTING.md` for more solutions.
 | Traditional Filter | ML Regime Filter |
 |-------------------|------------------|
 | Fixed indicators (RSI > 70) | Adaptive to market conditions |
-| Single condition | 14 features combined |
-| Binary (on/off) | Probability-based |
+| Single condition | Volatility and trend axes combined |
+| Binary (on/off) | Calibrated confidence |
 | No confidence score | Shows certainty (0-100%) |
 | Manual adjustment | Self-updating with data |
 | Lagging | Real-time prediction |
